@@ -1,5 +1,13 @@
+build/
 artifacts/
-cache/
-crytic-export/
-node_modules/
 typechain/
+dist/
+cache/
+node_modules/
+aws-exports.js
+awsconfiguration.json
+.secret-*
+*.zip
+.DS_Store
+.idea
+yarn*
