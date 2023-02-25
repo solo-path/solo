@@ -79,11 +79,17 @@ contract Solo is ISolo, ERC20, ReentrancyGuard {
      @return amountQuote Amount of quote tokens redeemed by the submitted liquidity tokens
      */
 
-    function withdraw(uint256 lpAmount, address to) public returns (uint256 amountDeposit, uint256 amountQuote) {
+    function withdraw(
+        uint256 lpAmount, 
+        address to
+    ) external override nonReentrant returns (uint256 amountDeposit, uint256 amountQuote) {
         return (0, 0);
     }
 
-    function swapExactInput(uint256 amount0, uint256 amount1) external override 
+    function swapExactInput(
+        uint256 amount0, 
+        uint256 amount1
+    ) external override nonReentrant 
         returns (uint256 output0, uint256 output1) {
 
         return (0, 0);
