@@ -5,7 +5,6 @@ pragma solidity 0.8.14;
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import { E } from "@prb/math/src/ud60x18/Constants.sol";
-import { IUniswapV3Pool } from "../../interfaces/IUniswapV3Pool.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -230,5 +229,4 @@ library SoloMath {
         // Formula 4.9
         cy = self.y.sub(ctx.fY);
     }
-
 }
