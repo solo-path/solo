@@ -7,7 +7,9 @@ interface ISolo {
     function firstDeposit(
         uint256 amountDeposit,
         uint256 amountQuote,
-        uint256 price
+        int24 ticksRange,
+        uint256 price,
+        address to
     ) external;
 
     function deposit(

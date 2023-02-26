@@ -55,10 +55,17 @@ contract Solo is ISolo, ERC20, ReentrancyGuard {
     function firstDeposit(
         uint256 amountDeposit,
         uint256 amountQuote,
-        uint256 price
+        int24 ticksRange,
+        uint256 price,
+        address to
     ) external override {
         // TODO
-        // put both tokens in and set the price
+        // require that the pool has no money
+        // nothing to protected position
+        // Some quote tokens to flex position and some to concentrated.
+        // Some deposit tokens to flex and some to concentrated.
+        // Same formulation as regular deposit. (to calculate LPs)
+        // Set the price in Uv3 pool.
     }
 
     /**
