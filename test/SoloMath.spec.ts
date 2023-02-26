@@ -428,6 +428,57 @@ describe('SoloMath', () => {
       res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
       await expect(res).to.eq(BigNumber.from("228948414196433714")); // 22.9%
     });
+
+    it('step5', async () => {
+      let res = await soloMath.step5(true,
+        ONE,
+        ONE.div(2),
+        ONE.mul(1000),ONE.mul(1000),
+        ONE.mul(500),ZERO);
+      await expect(res[0]).to.eq(ONE.mul(250));
+      await expect(res[1]).to.eq(0);
+
+      res = await soloMath.step5(true,
+        ONE,
+        ZERO,
+        ONE.mul(1000),ONE.mul(1000),
+        ONE.mul(500),ZERO);
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(0);
+
+      res = await soloMath.step5(true,
+        ONE,
+        ONE.div(10),
+        ONE.mul(1000),ONE.mul(1000),
+        ONE.mul(500),ZERO);
+      await expect(res[0]).to.eq(BigNumber.from("83333333333333333500")); // 83.333333
+      await expect(res[1]).to.eq(0);
+
+      res = await soloMath.step5(false,
+        ONE,
+        ONE.div(2),
+        ONE.mul(1000),ONE.mul(1000),
+        ZERO,ONE.mul(500));
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(ONE.mul(250));
+
+      res = await soloMath.step5(false,
+        ONE,
+        ZERO,
+        ONE.mul(1000),ONE.mul(1000),
+        ZERO,ONE.mul(500));
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(0);
+
+      res = await soloMath.step5(false,
+        ONE,
+        ONE.div(10),
+        ONE.mul(1000),ONE.mul(1000),
+        ZERO,ONE.mul(500));
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(BigNumber.from("83333333333333333334")); // 83.33333
+
+    });
     
   });
 

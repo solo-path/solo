@@ -54,6 +54,8 @@ library SoloMath {
         UD60x18 ay;
         UD60x18 xMax;
         UD60x18 yMax;
+        UD60x18 deltaFx;
+        UD60x18 deltaFy;
         UD60x18 pa;
         UD60x18 pb;
         UD60x18 cPct;
@@ -65,6 +67,8 @@ library SoloMath {
         UD60x18 fay;
         UD60x18 cax;
         UD60x18 cay;
+        UD60x18 acx;
+        UD60x18 acy;
         bool xForY;
         bool resetsConcentratedPosition;
     }
@@ -426,9 +430,6 @@ library SoloMath {
         TradeState memory,
         ScratchPad memory)
     {
-
-        // Step 4
-
         // Formula 4.22
         s.b = ud((block.number - self.blockNumber) * ONE);
 
@@ -441,14 +442,34 @@ library SoloMath {
         return (ts, s);
     }
 
-    function step5(
+    function step5( 
+        SoloContext memory ctx,
         TradeState memory ts,
-        ScratchPad memory s,
-        TradeReq memory t
+        ScratchPad memory s
     ) public pure returns (
         TradeState memory,
         ScratchPad memory)
     {
+        if (ts.xForY) {
+            // Formula 4.24
+            ts.acy = ctx.cY.mul(s.cPct);
+            // Formula 4.25
+            s.deltaFy = s.ax.mul(sq(ctx.sqrtP));
+            // Formula 4.26 - exact amount X in for flex pos trade
+            ts.fax = s.ax.mul(s.deltaFy.div(s.deltaFy.add(ts.acy)));
+            // Formula 4.27 - exact amount X in for concentrated pos trade
+            ts.cax = s.ax.sub(ts.fax);
+        } else {
+            // Formula 4.23
+            ts.acx = ctx.cX.mul(s.cPct);
+            // Formula 4.28 (corrolary)
+            s.deltaFx = s.ay.div(sq(ctx.sqrtP));
+            // Formula 4.29
+            ts.fay = s.ay.mul(s.deltaFx).div(s.deltaFx.add(ts.acx));
+            // Formula 4.30
+            ts.cay = s.ay.sub(ts.fay);
+        }
+
         return (ts, s);
     }
 

@@ -289,4 +289,29 @@ contract SoloMathTest {
         cPct = s.cPct;
     }
 
+    function step5(
+        bool xForY,
+        UD60x18 sqrtP,
+        UD60x18 cPct,
+        UD60x18 cX,
+        UD60x18 cY,
+        UD60x18 ax,
+        UD60x18 ay
+    ) external pure returns (UD60x18 cax, UD60x18 cay) {
+        SoloMath.SoloContext memory ctx;
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        ts.xForY = xForY;
+        ctx.sqrtP = sqrtP;
+        s.cPct = cPct;
+        ctx.cX = cX;
+        ctx.cY = cY;
+        s.ax = ax;
+        s.ay = ay;
+
+        (ts, ) = SoloMath.step5(ctx, ts, s);
+        cax = ts.cax;
+        cay = ts.cay;
+    }
+
 }
