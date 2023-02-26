@@ -87,6 +87,15 @@ contract SoloMathTest {
         return SoloMath.sq(a);
     }
 
+    function computeFlexPosition(
+        SD59x18 tC,
+        SD59x18 tPct
+    ) external view returns (SD59x18, SD59x18) {
+        SoloMath.SoloContext memory ctx;
+        ctx.tC = tC;
+        return state.computeFlexPosition(ctx, tPct);
+    }
+
     function setTminTmax(
         SD59x18 tMin,
         SD59x18 tMax

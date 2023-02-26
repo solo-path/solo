@@ -105,6 +105,46 @@ describe('SoloMath', () => {
   });
 
   describe('flex position boundaries', () => {
+    it('computeFlexPosition', async () => {
+      await soloMath.setTminTmax(ONE.mul(-5000),ONE.mul(5000));
+
+      await expect((await soloMath.computeFlexPosition(ONE.mul(0),ONE.div(100)))[0]).to.be.equal(ONE.mul(-5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5000),ONE.div(100)))[0]).to.be.equal(ONE.mul(-5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(-5000),ONE.div(100)))[0]).to.be.equal(ONE.mul(-15000));
+
+      await expect((await soloMath.computeFlexPosition(ONE.mul(0),ONE.div(100)))[1]).to.be.equal(ONE.mul(5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(-5000),ONE.div(100)))[1]).to.be.equal(ONE.mul(5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5000),ONE.div(100)))[1]).to.be.equal(ONE.mul(15000));
+
+      await soloMath.setTminTmax(ONE.mul(5000),ONE.mul(10000));
+
+      await expect((await soloMath.computeFlexPosition(ONE.mul(7500),ONE.div(100)))[0]).to.be.equal(ONE.mul(5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5000),ONE.div(100)))[0]).to.be.equal(ONE.mul(0));
+      // too far from the boundary (>25)
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5030),ONE.div(100)))[0]).to.be.equal(ONE.mul(5000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(9980),ONE.div(100)))[0]).to.be.equal(ONE.mul(5000));
+      // too close to the boundary (<25)
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5020),ONE.div(100)))[0]).to.be.equal(ONE.mul(40));
+
+      await expect((await soloMath.computeFlexPosition(ONE.mul(7500),ONE.div(100)))[1]).to.be.equal(ONE.mul(10000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(10000),ONE.div(100)))[1]).to.be.equal(ONE.mul(15000));
+      // too far from the boundary (>25)
+      await expect((await soloMath.computeFlexPosition(ONE.mul(5020),ONE.div(100)))[1]).to.be.equal(ONE.mul(10000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(9970),ONE.div(100)))[1]).to.be.equal(ONE.mul(10000));
+      // too close to the boundary (<25)
+      await expect((await soloMath.computeFlexPosition(ONE.mul(9980),ONE.div(100)))[1]).to.be.equal(ONE.mul(14960));
+
+      await soloMath.setTminTmax(ONE.mul(-887200),ONE.mul(1000));
+      // can't go lower than the min
+      await expect((await soloMath.computeFlexPosition(ONE.mul(-887100),ONE.div(200)))[0]).to.be.equal(ONE.mul(-887272));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(-887100),ONE.div(200)))[1]).to.be.equal(ONE.mul(1000));
+
+      await soloMath.setTminTmax(ONE.mul(1000),ONE.mul(887200));
+      // can't go higher than the max
+      await expect((await soloMath.computeFlexPosition(ONE.mul(887100),ONE.div(200)))[0]).to.be.equal(ONE.mul(1000));
+      await expect((await soloMath.computeFlexPosition(ONE.mul(887100),ONE.div(200)))[1]).to.be.equal(ONE.mul(887272));
+    });
+
     it('computeTmin', async () => {
       await soloMath.setTminTmax(ONE.mul(-5000),ONE.mul(5000));
 
