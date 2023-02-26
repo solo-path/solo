@@ -18,7 +18,6 @@ Solo is a platform that lets you trade tokens and earn money by providing liquid
 - Arbitrageurs buy and sell assets to profit from price differences in different markets
 - Frontend operators host user interfaces and make it easy to use Solo
 - Token communities incentivize the use of their own token in Solo
-All four types of users are important for Solo to work well.
 
 # 3. Shared Concentrated Liquidity with Just-in-Time Rebalances
 Solo uses shared concentrated liquidity and just-in-time rebalances to create deep and efficient liquidity for trading tokens.
