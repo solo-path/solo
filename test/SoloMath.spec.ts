@@ -271,6 +271,42 @@ describe('SoloMath', () => {
 
   });
 
+  describe('pre-trade assessment', () => {
+    it('preTradeAssessment', async () => {
+      // price: 1, Fpct = 90%, Rptc = 10%
+      // x: 1000, y: 1000
+      // Fx: 500, Fy: 500
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(1000),
+        ZERO, ZERO);
 
+      let res = await soloMath.preTradeAssessment(
+        ONE,ONE.mul(500),ONE.mul(500),ONE.mul(90).div(100),ONE.mul(10).div(100));
+      await expect(res).to.eq(true);
+
+      // price: 1, Fpct = 90%, Rptc = 10%
+      // x: 1000, y: 1000
+      // Fx: 900, Fy: 900
+      res = await soloMath.preTradeAssessment(
+        ONE,ONE.mul(900),ONE.mul(900),ONE.mul(90).div(100),ONE.mul(10).div(100));
+      await expect(res).to.eq(false);
+
+      // price: 1, Fpct = 90%, Rptc = 10%
+      // x: 1000, y: 1100
+      // Fx: 900, Fy: 900
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(1100),
+        ZERO, ZERO);
+      res = await soloMath.preTradeAssessment(
+        ONE,ONE.mul(900),ONE.mul(900),ONE.mul(90).div(100),ONE.mul(10).div(100));
+      await expect(res).to.eq(false);
+
+      // price: 1, Fpct = 90%, Rptc = 10%
+      // x: 1000, y: 1100
+      // Fx: 800, Fy: 900
+      res = await soloMath.preTradeAssessment(
+        ONE,ONE.mul(800),ONE.mul(900),ONE.mul(90).div(100),ONE.mul(10).div(100));
+      await expect(res).to.eq(true);
+
+    });
+  });
 
 });

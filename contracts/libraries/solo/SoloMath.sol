@@ -233,4 +233,28 @@ library SoloMath {
         // Formula 4.9
         cy = self.y.sub(ctx.fY);
     }
+
+    function preTradeAssessment(
+        SoloState storage self, 
+        SoloContext memory ctx,
+        UD60x18 fPct,
+        UD60x18 rPct
+    ) public view returns (bool rebalance) {
+
+        if (moreYthanX(self, ctx)) {
+            // Formula 4.10
+            // TODO why do we use lt(a,b) function here instead of simple lt?
+            rebalance = lt(
+                ctx.fX.mul(one().add(rPct)), 
+                self.x.mul(fPct)
+            );
+        } else {
+            // Formula 4.11
+            rebalance = lt(
+                ctx.fY.mul(one().add(rPct)), 
+                self.y.mul(fPct)
+            );
+        }
+    }
+
 }

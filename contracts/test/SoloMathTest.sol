@@ -169,4 +169,18 @@ contract SoloMathTest {
         return state.computeCxCy(ctx);
     }
 
+    function preTradeAssessment(
+        UD60x18 sqrtP,
+        UD60x18 fX,
+        UD60x18 fY,
+        UD60x18 fPct,
+        UD60x18 rPct
+    ) external view returns (bool rebalance) {
+        SoloMath.SoloContext memory ctx;
+        ctx.sqrtP = sqrtP;
+        ctx.fX = fX;
+        ctx.fY = fY;
+        return state.preTradeAssessment(ctx, fPct, rPct);
+    }
+
 }
