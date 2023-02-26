@@ -327,6 +327,78 @@ describe('SoloMath', () => {
       await expect(res[1]).to.eq(ONE.mul(990));
 
     });
+  
+    it('step3a', async () => {
+      await soloMath.setState_pf(ONE);
+
+      let res = await soloMath.step3a(true,ONE.div(100));
+      await expect(res[0]).to.eq(ONE.mul(99).div(100));
+      await expect(res[1]).to.eq(0);
+
+      res = await soloMath.step3a(false,ONE.div(100));
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(ONE.mul(101).div(100));
+    });
+
+    it('step3b', async () => {
+      // price: 1, pMin: 0.5, pMax: 1.5, Fpct = 100%
+      // sqrtPMin:  707106781187000000
+      // sqrtPMax: 1224744871390000000
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(1000),
+        BigNumber.from("707106781187000000"), BigNumber.from("1224744871390000000"));
+
+      let res = await soloMath.step3b(true,BigNumber.from("1000000000000000000"),
+        ONE.mul(1000),ONE.mul(1000),BigNumber.from("990000000000000000"),ZERO);
+      await expect(res[0]).to.eq(ZERO);
+      await expect(res[1]).to.eq(BigNumber.from("27315910072687821523")); // 27
+
+      res = await soloMath.step3b(true,BigNumber.from("1000000000000000000"),
+        ONE.mul(1000),ONE.mul(1000),BigNumber.from("1010000000000000000"),ZERO);
+      await expect(res[0]).to.eq(ZERO);
+      await expect(res[1]).to.eq(ZERO);
+
+      res = await soloMath.step3b(false,BigNumber.from("1000000000000000000"),
+        ONE.mul(1000),ONE.mul(1000),ZERO,BigNumber.from("1010000000000000000"));
+      await expect(res[0]).to.eq(BigNumber.from("16944092492559240925")); // 16
+      await expect(res[1]).to.eq(ZERO);
+
+      res = await soloMath.step3b(false,BigNumber.from("1000000000000000000"),
+        ONE.mul(1000),ONE.mul(1000),ZERO,BigNumber.from("990000000000000000"));
+      await expect(res[0]).to.eq(ZERO);
+      await expect(res[1]).to.eq(ZERO);
+    });
+
+    it('step3c', async () => {
+      let res = await soloMath.step3c(true,
+        ZERO,ONE,
+        ONE.mul(9),ZERO,
+        ONE,ONE.mul(2));
+      await expect(res[0]).to.eq(ONE.mul(9));
+      await expect(res[1]).to.eq(0);
+      await expect(res[2]).to.eq(true);
+
+      res = await soloMath.step3c(true,
+        ZERO,ONE.mul(10),
+        ONE,ZERO,
+        ONE,ONE.mul(2));
+      await expect(res[2]).to.eq(false);
+
+      res = await soloMath.step3c(false,
+        ONE,ZERO,
+        ZERO,ONE.mul(9),
+        ONE.mul(2),ONE);
+      await expect(res[0]).to.eq(0);
+      await expect(res[1]).to.eq(ONE.mul(9));
+      await expect(res[2]).to.eq(true);
+
+      res = await soloMath.step3c(false,
+        ONE.mul(10),ZERO,
+        ZERO,ONE,
+        ONE.mul(2),ONE);
+      await expect(res[2]).to.eq(false);
+
+    });
+  
   });
 
 

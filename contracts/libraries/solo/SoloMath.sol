@@ -34,6 +34,7 @@ library SoloMath {
         UD60x18 y;
         SD59x18 tMax;
         SD59x18 tMin;
+        UD60x18 pf;
         UD60x18 sqrtPMin;
         UD60x18 sqrtPMax;
     }
@@ -50,10 +51,19 @@ library SoloMath {
     struct ScratchPad {
         UD60x18 ax;
         UD60x18 ay;
+        UD60x18 xMax;
+        UD60x18 yMax;
+        UD60x18 pa;
+        UD60x18 pb;
     }
 
     struct TradeState {
+        UD60x18 fax;
+        UD60x18 fay;
+        UD60x18 cax;
+        UD60x18 cay;
         bool xForY;
+        bool resetsConcentratedPosition;
     }
 
     struct TradeReq {
@@ -313,25 +323,92 @@ library SoloMath {
         return (ts, s);
     }
 
-    function step2(
+
+    // Step 3
+    // Calculate the maximum price movement that a trade can cause without losing eligibility 
+    // to use funds from the Concentrated position.
+    // Have to split into 3 parts - otherwise stack is too deep
+
+    function step3a(
+        SoloState storage self, 
         TradeState memory ts,
         ScratchPad memory s,
         TradeReq memory t
-    ) public pure returns (
+    ) public view returns (
         TradeState memory,
         ScratchPad memory)
     {
+        if (ts.xForY) {
+            // Formula 4.14
+            s.pa = self.pf.mul(one().sub(t.fee));
+        } else {
+            // Formula 4.15
+            s.pb = self.pf.mul(one().add(t.fee));
+        }
+    
         return (ts, s);
     }
 
-    function step3(
+    function step3b(
+        SoloState storage self, 
+        SoloContext memory ctx,
         TradeState memory ts,
-        ScratchPad memory s,
-        TradeReq memory t
+        ScratchPad memory s
+    ) public view returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        UD60x18 p = sq(ctx.sqrtP);
+        if (ts.xForY) {
+            if (s.pa.gte(p)) {
+                // Formula 4.16
+                s.yMax = zero();
+            } else {
+                // Formula 4.17
+                s.yMax = computeAmountOfY(ctx.fX, s.pa.sqrt(), ctx.sqrtP, self.sqrtPMax);
+            }
+        } else {
+            if (s.pb.lte(p)) {
+                // Formula 4.18
+                s.xMax = zero();
+            } else {
+                // Formula 4.19
+                s.xMax = computeAmountOfX(ctx.fY, self.sqrtPMin, ctx.sqrtP, s.pb.sqrt());
+            }
+        }
+    
+        return (ts, s);
+    }
+
+    function step3c(
+        TradeState memory ts,
+        ScratchPad memory s
     ) public pure returns (
         TradeState memory,
         ScratchPad memory)
     {
+        ts.resetsConcentratedPosition = false;
+        
+        if(ts.xForY) {
+            // Formula 4.20
+            if (s.yMax.div(s.pa).lt(s.ax)) {
+                ts.fax = s.ax;
+                ts.fay = ud(0);
+                ts.cax = ud(0);
+                ts.cay = ud(0);
+                ts.resetsConcentratedPosition = true;
+            }
+        } else {
+            // Formula 4.21
+            if (s.xMax.mul(s.pb).lt(s.ay)) {
+                ts.fax = ud(0);
+                ts.fay = s.ay;
+                ts.cax = ud(0);
+                ts.cay = ud(0);
+                ts.resetsConcentratedPosition = true;
+            }
+        }
+
         return (ts, s);
     }
 

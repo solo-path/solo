@@ -38,6 +38,12 @@ contract SoloMathTest {
         state.sqrtPMax = sqrtPMax;
     }
 
+    function setState_pf(
+        UD60x18 pf
+    ) external {
+        state.pf = pf;
+    }
+
 
 
     // ======================
@@ -198,6 +204,69 @@ contract SoloMathTest {
         (, s) = SoloMath.step1(ts, s, t);
         ax = s.ax;
         ay = s.ay;
+    }
+
+    function step3a(
+        bool xForY,
+        UD60x18 fee
+    ) external view returns (UD60x18 pa, UD60x18 pb) {
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        SoloMath.TradeReq memory t;
+        t.fee = fee;
+        ts.xForY = xForY;
+
+        (, s) = state.step3a(ts, s, t);
+        pa = s.pa;
+        pb = s.pb;
+    }
+
+    function step3b(
+        bool xForY,
+        UD60x18 sqrtP,
+        UD60x18 fX,
+        UD60x18 fY,
+        UD60x18 pa,
+        UD60x18 pb
+    ) external view returns (UD60x18 xMax, UD60x18 yMax) {
+        SoloMath.SoloContext memory ctx;
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        ts.xForY = xForY;
+        ctx.sqrtP = sqrtP;
+        ctx.fX = fX;
+        ctx.fY = fY;
+        s.pa = pa;
+        s.pb = pb;
+
+        (, s) = state.step3b(ctx, ts, s);
+        xMax = s.xMax;
+        yMax = s.yMax;
+    }
+
+    function step3c(
+        bool xForY,
+        UD60x18 xMax,
+        UD60x18 yMax,
+        UD60x18 ax,
+        UD60x18 ay,
+        UD60x18 pa,
+        UD60x18 pb
+    ) external pure returns (UD60x18 fax, UD60x18 fay, bool reset) {
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        ts.xForY = xForY;
+        s.xMax = xMax;
+        s.yMax = yMax;
+        s.ax = ax;
+        s.ay = ay;
+        s.pa = pa;
+        s.pb = pb;
+
+        (ts, ) = SoloMath.step3c(ts, s);
+        reset = ts.resetsConcentratedPosition;
+        fax = ts.fax;
+        fay = ts.fay;
     }
 
 }
