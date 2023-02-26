@@ -398,7 +398,37 @@ describe('SoloMath', () => {
       await expect(res[2]).to.eq(false);
 
     });
-  
+
+    async function mineNBlocks(n: number) {
+      for (let index = 0; index < n; index++) {
+        await ethers.provider.send('evm_mine', []);
+      }
+    }
+
+    it('step4', async () => {
+      await mineNBlocks(500);
+
+      await soloMath.setBlocksPassed(10);
+      let res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
+      await expect(res).to.eq(BigNumber.from(0)); // 0%
+
+      await soloMath.setBlocksPassed(11);
+      res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
+      await expect(res).to.gt(BigNumber.from(0)); // >0%
+
+      await soloMath.setBlocksPassed(20);
+      res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
+      await expect(res).to.eq(BigNumber.from("6644493744965583")); // 0.066%
+
+      await soloMath.setBlocksPassed(100);
+      res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
+      await expect(res).to.eq(BigNumber.from("58235466415751290")); // 5.8%
+
+      await soloMath.setBlocksPassed(400);
+      res = await soloMath.step4(ONE.mul(10),ONE.mul(1500));
+      await expect(res).to.eq(BigNumber.from("228948414196433714")); // 22.9%
+    });
+    
   });
 
 

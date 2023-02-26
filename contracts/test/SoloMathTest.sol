@@ -44,6 +44,12 @@ contract SoloMathTest {
         state.pf = pf;
     }
 
+    function setBlocksPassed(
+        uint256 blocks
+    ) external {
+        state.blockNumber = block.number - blocks;
+    }
+
 
 
     // ======================
@@ -267,6 +273,20 @@ contract SoloMathTest {
         reset = ts.resetsConcentratedPosition;
         fax = ts.fax;
         fay = ts.fay;
+    }
+
+    function step4(
+        UD60x18 bMin,
+        UD60x18 s_
+    ) external view returns (UD60x18 cPct) {
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        SoloMath.TradeReq memory t;
+        t.bMin = bMin;
+        t.s_ = s_;
+
+        (, s) = state.step4(ts, s, t);
+        cPct = s.cPct;
     }
 
 }

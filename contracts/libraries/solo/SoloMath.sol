@@ -37,6 +37,7 @@ library SoloMath {
         UD60x18 pf;
         UD60x18 sqrtPMin;
         UD60x18 sqrtPMax;
+        uint256 blockNumber;
     }
 
     struct SoloContext {
@@ -55,6 +56,8 @@ library SoloMath {
         UD60x18 yMax;
         UD60x18 pa;
         UD60x18 pb;
+        UD60x18 cPct;
+        UD60x18 b;
     }
 
     struct TradeState {
@@ -70,6 +73,8 @@ library SoloMath {
         UD60x18 rax;
         UD60x18 ray;
         UD60x18 fee;
+        UD60x18 bMin;
+        UD60x18 s_;
     }
 
 
@@ -413,13 +418,26 @@ library SoloMath {
     }
 
     function step4(
+        SoloState storage self,
         TradeState memory ts,
         ScratchPad memory s,
         TradeReq memory t
-    ) public pure returns (
+    ) public view returns (
         TradeState memory,
         ScratchPad memory)
     {
+
+        // Step 4
+
+        // Formula 4.22
+        s.b = ud((block.number - self.blockNumber) * ONE);
+
+        if (t.bMin.gte(s.b)) {
+            s.cPct = ud(0);
+        } else {
+            s.cPct = one().sub(one().div(E.pow(s.b.sub(t.bMin).div(t.s_))));
+        }
+
         return (ts, s);
     }
 
