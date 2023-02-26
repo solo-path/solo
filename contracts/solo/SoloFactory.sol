@@ -7,15 +7,12 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract SoloFactory is Ownable {
 
-    error Unacceptable(string reason);
-    
     address private constant NULL_ADDRESS = address(0);
     address public immutable poolFactory;
     address[] public deployedPools;
 
     constructor (address poolFactory_) {
-        if(poolFactory_ == NULL_ADDRESS) 
-            revert Unacceptable({ reason: "1" });
+        require(poolFactory_ != NULL_ADDRESS,"NULL"); 
         poolFactory = poolFactory_;
     }
 
