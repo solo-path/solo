@@ -1,8 +1,8 @@
-# 1. Solo
+# 1. Solo - The First Symbiotic Market Maker
 
 Solo is a protocol that provides deep and efficient liquidity for trading tokens, while eliminating the zero-sum game between arbitrageurs and liquidity providers (LPs) that is common in traditional AMMs.
 
-In order to accomplish this, Solo uses a combination of shared concentrated liquidity and refined strategies that are embedded into the AMM itself. This allows liquidity providers (LPs) to select pools that align with their risk tolerance, and liquidity ranges are adjusted before executing trades, minimizing the risk of selling tokens beneath market value. The result is a streamlined and efficient liquidity provision process that benefits both traders and LPs.
+In order to accomplish this, Solo uses a combination of shared concentrated liquidity and refined strategies that are embedded into the AMM itself. This allows liquidity providers (LPs) to select pools that align with their risk tolerance, and liquidity ranges are adjusted before executing trades, minimizing the risk of selling tokens beneath market value. The result is a streamlined and efficient liquidity provision process that benefits both traders and LPs.  As a result, we call it a symbiotic market maker.
 
 Solo also addresses some of the issues that are common with traditional AMMs. For example, it mitigates toxic arbitrage and "impermanent loss" by introducing refined strategies into the AMM itself, which eliminates the need for constant updates from LPs. This makes the process of providing liquidity more efficient and streamlined, while also minimizing the risk of selling tokens beneath market value.
 
