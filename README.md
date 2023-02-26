@@ -29,8 +29,8 @@ To lessen the risk of losing the desired long exposure, Solo enables protected d
 
 Solo also uses a flex swap approach to mitigate toxic arbitrage, and a dynamic concentration percentage to maximize capital efficiency.
 
-## 4. Implementing a Solo Proof-of-Concept
-For the purposes of the hackathon, we will implement the following equations in a wrapper around the existing Uniswap V3 core contracts.  This will enable the trader to also execute changes to the shared liquidity position according to the following equations.
+## 4. Implementing a Solo Demo
+For the demo, we implemented the following equations in a wrapper around the existing Uniswap V3 core contracts.  This will enable trades to execute changes to the pool's shared liquidity position according to the following equations.
 
 These symbols be used in this discussion:
 - B (Number of blocks since the last concentration reset)
