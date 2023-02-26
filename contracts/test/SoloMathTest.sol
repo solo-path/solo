@@ -15,6 +15,34 @@ contract SoloMathTest {
     SoloMath.SoloState state;
     using SoloMath for SoloMath.SoloState;
 
+    // ==============================
+    // setters used to populate state
+
+    function setTminTmax(
+        SD59x18 tMin,
+        SD59x18 tMax
+    ) external {
+        state.tMin = tMin;
+        state.tMax = tMax;
+    }
+
+    function setState_x_y_sqrtPMin_sqrtPMax(
+        UD60x18 x,
+        UD60x18 y,
+        UD60x18 sqrtPMin,
+        UD60x18 sqrtPMax
+    ) external {
+        state.x = x;
+        state.y = y;
+        state.sqrtPMin = sqrtPMin;
+        state.sqrtPMax = sqrtPMax;
+    }
+
+
+
+    // ======================
+    // pass through functions
+
     function zero() external pure returns (UD60x18 sdOne) {
         return SoloMath.zero();
     }
@@ -87,6 +115,14 @@ contract SoloMathTest {
         return SoloMath.sq(a);
     }
 
+    function moreYthanX(
+        UD60x18 sqrtP
+    ) external view returns (bool moreY) {
+        SoloMath.SoloContext memory ctx;
+        ctx.sqrtP = sqrtP;
+        return state.moreYthanX(ctx);
+    }
+
     function computeFlexPosition(
         SD59x18 tC,
         SD59x18 tPct
@@ -94,14 +130,6 @@ contract SoloMathTest {
         SoloMath.SoloContext memory ctx;
         ctx.tC = tC;
         return state.computeFlexPosition(ctx, tPct);
-    }
-
-    function setTminTmax(
-        SD59x18 tMin,
-        SD59x18 tMax
-    ) external {
-        state.tMin = tMin;
-        state.tMax = tMax;
     }
 
     function computeTmin(
@@ -120,6 +148,25 @@ contract SoloMathTest {
         SoloMath.SoloContext memory ctx;
         ctx.tC = tC;
         return state.computeTmax(ctx, tPct);
+    }
+
+    function computeFxFy(
+        UD60x18 sqrtP,
+        UD60x18 fPct
+    ) external view returns (UD60x18 fx, UD60x18 fy) {
+        SoloMath.SoloContext memory ctx;
+        ctx.sqrtP = sqrtP;
+        return state.computeFxFy(ctx, fPct);
+    }
+
+    function computeCxCy(
+        UD60x18 fX,
+        UD60x18 fY
+    ) external view returns (UD60x18 cx, UD60x18 cy) {
+        SoloMath.SoloContext memory ctx;
+        ctx.fX = fX;
+        ctx.fY = fY;
+        return state.computeCxCy(ctx);
     }
 
 }

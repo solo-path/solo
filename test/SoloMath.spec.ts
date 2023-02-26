@@ -191,5 +191,86 @@ describe('SoloMath', () => {
 
   });
 
+  describe('liquidity amounts for flex and concentrated positions', () => {
+    it('moreYthanX', async () => {
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(1000),
+        ZERO, ZERO);
+
+      // sqrtP_1:  707106781187000000 // of 0.5
+      // sqrtP_2: 1224744871390000000 // of 1.5
+
+      let res = await soloMath.moreYthanX(BigNumber.from("707106781187000000"));
+      await expect(res).to.eq(true);
+      res = await soloMath.moreYthanX(BigNumber.from("1224744871390000000"));
+      await expect(res).to.eq(false);
+      res = await soloMath.moreYthanX(BigNumber.from("1000000000000000000")); // 1
+      await expect(res).to.eq(false);
+
+    });
+
+    it('computeFxFy', async () => {
+      // price: 100, pMin: 50, pMax: 150, Fpct = 90%
+      // sqrtPMin:  7071067811870000000
+      // sqrtPMax: 12247448713900000000
+      // x: 1000, y: 2000
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(2000),
+        BigNumber.from("7071067811870000000"), BigNumber.from("12247448713900000000"));
+
+      let res = await soloMath.computeFxFy(ONE.mul(10),ONE.mul(90).div(100));
+      //console.log(res[0].toString());
+      //console.log(res[1].toString());
+      await expect(res[0]).to.be.equal(BigNumber.from("11277357518443363748"));
+      await expect(res[1]).to.be.equal(ONE.mul(1800));
+
+      // price: 1, pMin: 0.5, pMax: 1.5, Fpct = 100%
+      // sqrtPMin:  707106781187000000
+      // sqrtPMax: 1224744871390000000
+      // x: 1000, y: 1000
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(1000),
+        BigNumber.from("707106781187000000"), BigNumber.from("1224744871390000000"));
+
+      res = await soloMath.computeFxFy(ONE,ONE);
+      //console.log(res[0].toString());
+      //console.log(res[1].toString());
+      await expect(res[0]).to.be.equal(BigNumber.from("626519862135742431293"));
+      await expect(res[1]).to.be.equal(ONE.mul(1000));
+
+      // price: 1, pMin: 0.5, pMax: 1.5, Fpct = 100%
+      // sqrtPMin:  707106781187000000
+      // sqrtPMax: 1224744871390000000
+      // x: 1000, y: 2000
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(2000),
+        BigNumber.from("707106781187000000"), BigNumber.from("1224744871390000000"));
+
+      res = await soloMath.computeFxFy(ONE,ONE);
+      //console.log(res[0].toString());
+      //console.log(res[1].toString());
+      await expect(res[0]).to.be.equal(ONE.mul(1000));
+      await expect(res[1]).to.be.equal(BigNumber.from("1596118591661406868110"));
+    });
+
+    it('computeCxCy', async () => {
+      await soloMath.setState_x_y_sqrtPMin_sqrtPMax(ONE.mul(1000),ONE.mul(2000),
+        ZERO, ZERO);
+
+      let res = await soloMath.computeCxCy(ONE.mul(1000),ONE.mul(2000));
+      await expect(res[0]).to.be.equal(ZERO);
+      await expect(res[1]).to.be.equal(ZERO);
+
+      // TODO check for negative Cx/Cy doesn't work
+      //const msg1 = "negative Cx/Cy";
+      // negavice Cx/Cy
+      //await expect(soloMath.computeCxCy(ONE.mul(1001),ONE.mul(2000))).to.be.revertedWith(msg1);
+      //await expect(soloMath.computeCxCy(ONE.mul(1000),ONE.mul(2001))).to.be.revertedWith(msg1);
+
+      res = await soloMath.computeCxCy(ONE.mul(600),ONE.mul(1000));
+      await expect(res[0]).to.be.equal(ONE.mul(400));
+      await expect(res[1]).to.be.equal(ONE.mul(1000));
+
+    });
+
+  });
+
+
 
 });

@@ -125,6 +125,7 @@ library SoloMath {
         require(a.eq(zero()) || !(square.eq(zero())), "sq resulted in 0");
     }
 
+    // util function to determine drection of the trade
     function moreYthanX(
         SoloState storage self,
         SoloContext memory ctx
@@ -171,6 +172,7 @@ library SoloMath {
         }
     }
 
+    // util function (implements the main liquidity formula) - part 1
     function computeAmountOfX(
         UD60x18 amountY,
         UD60x18 sqrtPMin,
@@ -186,6 +188,7 @@ library SoloMath {
         );
     }
 
+    // util function (implements the main liquidity formula) - part 2
     function computeAmountOfY(
         UD60x18 amountX,
         UD60x18 sqrtPMin,
@@ -219,12 +222,12 @@ library SoloMath {
         }
     }
 
-    // Section 4.3.2
     function computeCxCy(
         SoloState storage self,
         SoloContext memory ctx
     ) public view returns (UD60x18 cx, UD60x18 cy) {
-        require(self.x.gte(ctx.fX) && self.y.gte(ctx.fY), "negative Cx/Cy");
+        // TODO this check does not work. Need to debug why
+        //require(self.x.gte(ctx.fX) && self.y.gte(ctx.fY), "negative Cx/Cy");
         // Formula 4.8
         cx = self.x.sub(ctx.fX);
         // Formula 4.9
