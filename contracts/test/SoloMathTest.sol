@@ -87,4 +87,30 @@ contract SoloMathTest {
         return SoloMath.sq(a);
     }
 
+    function setTminTmax(
+        SD59x18 tMin,
+        SD59x18 tMax
+    ) external {
+        state.tMin = tMin;
+        state.tMax = tMax;
+    }
+
+    function computeTmin(
+        SD59x18 tC,
+        SD59x18 tPct
+    ) external view returns (SD59x18) {
+        SoloMath.SoloContext memory ctx;
+        ctx.tC = tC;
+        return state.computeTmin(ctx, tPct);
+    }
+
+    function computeTmax(
+        SD59x18 tC,
+        SD59x18 tPct
+    ) external view returns (SD59x18) {
+        SoloMath.SoloContext memory ctx;
+        ctx.tC = tC;
+        return state.computeTmax(ctx, tPct);
+    }
+
 }

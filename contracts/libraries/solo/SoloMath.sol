@@ -121,6 +121,7 @@ library SoloMath {
 
     function sq(UD60x18 a) public pure returns (UD60x18 square) {
         square = a.mul(a);
+        // TODO doesn't work - getting RangeError: Maximum call stack size exceeded
         require(a.eq(zero()) || !(square.eq(zero())), "sq resulted in 0");
     }
 
