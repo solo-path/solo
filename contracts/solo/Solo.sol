@@ -3,6 +3,7 @@
 pragma solidity 0.8.14;
 
 import { ISolo } from "../interfaces/ISolo.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "../interfaces/IUniswapV3Factory.sol";
 import { IUniswapV3MintCallback } from "../interfaces/callback/IUniswapV3MintCallback.sol";
 import { IUniswapV3SwapCallback } from "../interfaces/callback/IUniswapV3SwapCallback.sol";
@@ -93,6 +94,84 @@ contract Solo is ISolo, ERC20, ReentrancyGuard {
         returns (uint256 output0, uint256 output1) {
 
         return (0, 0);
+    }
+
+    /**
+     @notice uint128Safe function.
+     @param x input value.
+     @return uint128 x, provided overflow has not occured.
+     */
+    function _uint128Safe(uint256 x) public pure returns (uint128) {
+        require(x <= type(uint128).max, "IV.128_OF");
+        return uint128(x);
+    }
+
+    /**
+     @notice Mint liquidity in Uniswap V3 pool.
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param liquidity Amount of liquidity to mint
+     @param amount0 Used amount of token0
+     @param amount1 Used amount of token1
+     */
+    function _mintLiquidity(
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) internal returns (uint256 amount0, uint256 amount1) {
+        if (liquidity > 0) {
+            (amount0, amount1) = IUniswapV3Pool(pool).mint(
+                address(this),
+                tickLower,
+                tickUpper,
+                liquidity,
+                abi.encode(address(this))
+            );
+        }
+    }
+
+    /**
+     @notice Burn liquidity in Uniswap V3 pool.
+     @param liquidity amount of liquidity to burn
+     @param tickLower The lower tick of the flex liquidity position
+     @param tickUpper The upper tick of the flex liquidity position
+     @param to The account to receive token0 and token1 amounts
+     @param collectAll Flag that indicates whether all token0 and token1 tokens should be collected or only the ones released during this burn
+     @param amount0 released amount of token0
+     @param amount1 released amount of token1
+     */
+    function _burnLiquidity(
+        uint128 liquidity,
+        int24 tickLower,
+        int24 tickUpper,
+        address to,
+        bool collectAll
+    ) internal returns (uint256 amount0, uint256 amount1) {
+        if (liquidity > 0) {
+            // Burn liquidity
+            (uint256 owed0, uint256 owed1) = IUniswapV3Pool(pool).burn(
+                tickLower,
+                tickUpper,
+                liquidity
+            );
+
+            // Collect amount owed
+            uint128 collect0 = collectAll
+                ? type(uint128).max
+                : _uint128Safe(owed0);
+            uint128 collect1 = collectAll
+                ? type(uint128).max
+                : _uint128Safe(owed1);
+            if (collect0 > 0 || collect1 > 0) {
+                (amount0, amount1) = IUniswapV3Pool(pool).collect(
+                    to,
+                    tickLower,
+                    tickUpper,
+                    collect0,
+                    collect1
+                );
+            }
+        }
     }
 
 }
