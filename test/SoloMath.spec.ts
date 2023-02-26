@@ -309,4 +309,25 @@ describe('SoloMath', () => {
     });
   });
 
+  describe('steps', () => {
+    it('step1', async () => {
+      // fee = 1%
+
+      const msg1 = "rax and ray cannot both be > 0";
+      const msg2 = "rax and ray cannot both be 0";
+
+      // TODO find out how to catch these exceptions
+      
+      //await expect(soloMath.step1(ONE.mul(1000),ONE.mul(1000),ONE.div(100))).to.be.revertedWith(msg1);
+      //await expect(soloMath.step1(ONE.mul(0),ONE.mul(0),ONE.div(100))).to.be.revertedWith(msg2);
+
+      let res = await soloMath.step1(ONE.mul(1000),ONE.mul(0),ONE.div(100));
+      await expect(res[0]).to.eq(ONE.mul(990));
+      res = await soloMath.step1(ONE.mul(0),ONE.mul(1000),ONE.div(100));
+      await expect(res[1]).to.eq(ONE.mul(990));
+
+    });
+  });
+
+
 });

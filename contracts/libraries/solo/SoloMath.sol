@@ -47,6 +47,22 @@ library SoloMath {
         SD59x18 tC;
     }
 
+    struct ScratchPad {
+        UD60x18 ax;
+        UD60x18 ay;
+    }
+
+    struct TradeState {
+        bool xForY;
+    }
+
+    struct TradeReq {
+        UD60x18 rax;
+        UD60x18 ray;
+        UD60x18 fee;
+    }
+
+
     function zero() public pure returns (UD60x18 sdOne) {
         sdOne = ud(ZERO);
     }
@@ -255,6 +271,90 @@ library SoloMath {
                 self.y.mul(fPct)
             );
         }
+    }
+
+    // Steps for the actual swap go here
+
+    // determines direction of the trade
+    function step0(
+        TradeState memory ts,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory)
+    {
+        ts.xForY = t.rax.gt(ud(0));
+        return ts;
+    }
+
+    // Calculate the Ax or Ay, the specific quantity of either X or Y tokens used in the swap, 
+    // by subtracting the fee.
+    function step1(
+        TradeState memory ts,
+        ScratchPad memory s,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        if(t.rax.gt(ud(0)) && t.ray.gt(ud(0))) 
+            revert Unacceptable ({ reason: "rax and ray cannot both be > 0" });
+        if(t.rax.eq(ud(0)) && t.ray.eq(ud(0))) 
+            revert Unacceptable ({ reason: "rax and ray cannot both be 0" });
+        ts.xForY = t.rax.gt(ud(0));
+
+        if (ts.xForY) {
+            // Formula 4.12
+            s.ax = t.rax.mul(one().sub(t.fee));
+        } else {
+            // Formula 4.13
+            s.ay = t.ray.mul(one().sub(t.fee));
+        }
+
+        return (ts, s);
+    }
+
+    function step2(
+        TradeState memory ts,
+        ScratchPad memory s,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        return (ts, s);
+    }
+
+    function step3(
+        TradeState memory ts,
+        ScratchPad memory s,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        return (ts, s);
+    }
+
+    function step4(
+        TradeState memory ts,
+        ScratchPad memory s,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        return (ts, s);
+    }
+
+    function step5(
+        TradeState memory ts,
+        ScratchPad memory s,
+        TradeReq memory t
+    ) public pure returns (
+        TradeState memory,
+        ScratchPad memory)
+    {
+        return (ts, s);
     }
 
 }

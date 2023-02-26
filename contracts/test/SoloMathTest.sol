@@ -183,4 +183,21 @@ contract SoloMathTest {
         return state.preTradeAssessment(ctx, fPct, rPct);
     }
 
+    function step1(
+        UD60x18 rax,
+        UD60x18 ray,
+        UD60x18 fee
+    ) external pure returns (UD60x18 ax, UD60x18 ay) {
+        SoloMath.TradeState memory ts;
+        SoloMath.ScratchPad memory s;
+        SoloMath.TradeReq memory t;
+        t.rax = rax;
+        t.ray = ray;
+        t.fee = fee;
+
+        (, s) = SoloMath.step1(ts, s, t);
+        ax = s.ax;
+        ay = s.ay;
+    }
+
 }
