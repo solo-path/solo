@@ -33,30 +33,30 @@ Solo also uses a flex swap approach to mitigate toxic arbitrage, and a dynamic c
 For the purposes of the hackathon, we will implement the following equations in a wrapper around the existing Uniswap V3 core contracts.  This will enable the trader to also execute changes to the shared liquidity position according to the following equations.
 
 These symbols be used in this discussion:
-B - Number of blocks since the last concentration reset
-Bmin - Minimum number of blocks since the last reset
-Cpct - Concentration Percentage. Used to determine how many tokens from the Concentrated position could be utilized in a trade
-Cx - Amount of first (deposit) token in the Concentrated position
-Cy - Amount of second (quote) token in the Concentrated position
-Dpct - Percentage of deposit tokens to be allocated to the Protected position
-Fee	Pool’s Trading Fee
-Fpct - Maximum percent of x and y to be placed into the Flex liquidity position
-Fx - Amount of first (deposit) token in the Flex liquidity position
-Fy - Amount of second (quote) token in the Flex liquidity position
-P - Price
-Pmax - Square root of the upper range price in the Flex position.
-Pmin - Square root of the lower range price in the Flex position.
-Px - Amount of first (deposit) token in the Protected position
-Rpct - Rebalance threshold (percentage). Used to determine the maximum size at which the Flex position could grow before triggering a rebalance.
-S - Speed parameter for the concentration increase after a reset
-Tc - Current price tick
-Tmax - Upper range price tick in the Flex position.
-Tmin - Lower range price tick in the Flex position.
-Tpct - Trading Range threshold (percentage). Used to determine how many ticks the price can move within Flex posistion before causing expansion of the flex position.
-X - The first (deposit) token
-x - Amount of first (deposit) token in Solo’s liquidity positions. This value does not include X tokens placed into the Protected position
-Y - The second (quote) token
-y	Amount of second (quote) token in Solo’s liquidity positions
+- B (Number of blocks since the last concentration reset)
+- Bmin (Minimum number of blocks since the last reset)
+- Cpct (Concentration Percentage. Used to determine how many tokens from the Concentrated position could be utilized in a trade)
+- Cx (Amount of first (deposit) token in the Concentrated position)
+- Cy (Amount of second (quote) token in the Concentrated position)
+- Dpct (Percentage of deposit tokens to be allocated to the Protected position)
+- Fee (Pool’s Trading Fee)
+- Fpct (Maximum percent of x and y to be placed into the Flex liquidity position)
+- Fx (Amount of first (deposit) token in the Flex liquidity position)
+- Fy (Amount of second (quote) token in the Flex liquidity position)
+- P (Price)
+- Pmax (Square root of the upper range price in the Flex position)
+- Pmin (Square root of the lower range price in the Flex position)
+- Px (Amount of first (deposit) token in the Protected position)
+- Rpct (Rebalance threshold (percentage). Used to determine the maximum size at which the Flex position could grow before triggering a rebalance)
+- S (Speed parameter for the concentration increase after a reset)
+- Tc (Current price tick)
+- Tmax (Upper range price tick in the Flex position)
+- Tmin (Lower range price tick in the Flex position)
+- Tpct (Trading Range threshold (percentage). Used to determine how many ticks the price can move within Flex posistion before causing expansion of the flex position)
+- X (The first (deposit) token)
+- x (Amount of first (deposit) token in Solo’s liquidity positions. This value does not include X tokens placed into the Protected position)
+- Y (The second (quote) token)
+- y	(Amount of second (quote) token in Solo’s liquidity positions)
 
 4.1 Solo’s Liquidity Positions
 Each Solo pool manages three positions: Flex, Concentrated, and Protected. These positions are managed to ensure liquidity provision and minimize the risk of impermanent loss for liquidity providers.
@@ -236,3 +236,4 @@ If X tokens are swapped for Y tokens:
 If Y tokens are swapped for X tokens:
 	COx=CAySP	(4.33)
 	Ox=min(FOx+COx, ACx)	(4.34)
+
