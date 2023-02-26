@@ -1,4 +1,4 @@
-# 1. Solo - The First Symbiotic Market Maker
+# 1. Solo - The First Symbiotic Market Maker (SMM)
 
 Solo is a protocol that provides deep and efficient liquidity for trading tokens, while eliminating the zero-sum game between arbitrageurs and liquidity providers (LPs) that is common in traditional AMMs.
 
