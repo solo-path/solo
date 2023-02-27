@@ -171,6 +171,70 @@ contract Solo is ISolo,
         tick = pool.currentTick();
     }
 
+    function pullFlexPosition() internal returns (uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = _burnLiquidity(
+            uint128(ERC20(pool).balanceOf(address(this))),
+            int24(SD59x18.unwrap(app.tMin)),
+            int24(SD59x18.unwrap(app.tMax)),
+            address(this),
+            true
+        );
+    }
+
+    function putFlexPosition(
+        SoloMath.SoloContext memory ctx
+    ) internal returns (uint256 amount0, uint256 amount1){
+        int24 tickLower = int24(SD59x18.unwrap(app.tMin));
+        int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
+
+        uint256 liquidity = _liquidityForAmounts(
+            pool,
+            tickLower,
+            tickUpper,
+            UD60x18.unwrap(ctx.fX),
+            UD60x18.unwrap(ctx.fY)
+        );
+
+        (amount0, amount1) = _mintLiquidity(
+            tickLower, 
+            tickUpper, 
+            uint128(liquidity));
+    }
+
+    /**
+     @notice Calculate total value of the pool in quote tokens.
+     @return value total value of the pool
+     */
+    function capitalAsQuoteTokens(uint256 price) public view returns (uint256 value) {
+        uint256 totalDeposit;
+        uint256 totalQuote;
+        (uint256 amountDeposit, uint256 amountQuote) = flexPosition();
+        (uint256 protected0, uint256 protected1) = protectedPosition();
+        (uint256 concentrated0, uint256 concentrated1) = concentratedPosition();
+
+        if (token0IsDeposit) {
+            totalDeposit = 
+                protected0 +
+                concentrated0 +
+                amountDeposit;
+            totalQuote = 
+                protected1 +
+                concentrated1 +
+                amountQuote;
+        } else {
+            totalDeposit = 
+                protected1 +
+                concentrated1 +
+                amountDeposit;
+            totalQuote = 
+                protected0 +
+                concentrated0 +
+                amountQuote;
+        }
+        uint256 depositAsQuote = UD60x18.unwrap(ud(totalDeposit).mul(ud(price)));
+        value = depositAsQuote + totalQuote;
+    }
+
     /**
      @notice A portion of the deposit tokens on hand is protected and does not participate in liquidity.
      @return amount0 Protected token0 tokens.
@@ -387,7 +451,7 @@ contract Solo is ISolo,
      @param amount0 token0 amount
      @param amount1 token1 amount
      */
-    function liquidityForAmounts(
+    function _liquidityForAmounts(
         address pool,
         int24 tickLower,
         int24 tickUpper,
