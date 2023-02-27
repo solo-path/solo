@@ -4,6 +4,10 @@ typechain/
 dist/
 cache/
 node_modules/
+typechain/
+dist/
+state.json
+.env
 aws-exports.js
 awsconfiguration.json
 .secret-*
