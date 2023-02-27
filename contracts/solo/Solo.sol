@@ -103,13 +103,46 @@ contract Solo is ISolo,
         uint256 price,
         address to
     ) external override {
-        // TODO
         // require that the pool has no money
         // nothing to protected position
         // Some quote tokens to flex position and some to concentrated.
         // Some deposit tokens to flex and some to concentrated.
         // Same formulation as regular deposit. (to calculate LPs)
         // Set the price in Uv3 pool.
+
+        uint256 balanceToken0 = uint128(ERC20(token0).balanceOf(pool));
+        uint256 balanceToken1 = uint128(ERC20(token1).balanceOf(pool));
+        require(balanceToken0 == 0 && balanceToken1 == 0, "not empty");
+
+        // initialize the underlying pool 
+        uint160 sqrtPrice = uint160(UD60x18.unwrap(ud(price).sqrt()));
+        IUniswapV3Pool(pool).initialize(sqrtPrice);
+
+        // tC is calculated here
+        SoloMath.SoloContext memory ctx = getContext();
+
+        app.tMin = ctx.tC.sub(sd(ticksRange));
+        app.tMax = ctx.tC.add(sd(ticksRange));
+
+        // this check is needed, but commented out for for to reduce contract size            
+        require(app.tMin.gte(SoloMath.minTick()) && app.tMax.lte(SoloMath.maxTick()), "large range");
+
+        // get users funds
+        ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
+        ERC20(quoteToken()).safeTransferFrom(msg.sender, address(this), amountQuote);
+
+        app.x = ud(amountDeposit);
+        app.y = ud(amountQuote);
+
+        // set proper fX and fY (so some amount if set aside for cX and cY)
+        (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
+
+        // set the Flex position
+        putFlexPosition(ctx);
+
+        UD60x18 valueOfDeposit = ud(amountQuote).add(ud(amountDeposit).mul(ud(price)));
+
+        _mint(msg.sender, uint256(UD60x18.unwrap(valueOfDeposit)));
     }
 
     /**
