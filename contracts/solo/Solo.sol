@@ -257,7 +257,169 @@ contract Solo is ISolo,
     ) external override nonReentrant 
         returns (uint256 output0, uint256 output1) {
 
-        return (0, 0);
+        if (amount0 * amount1 != 0) revert ( "a" );
+
+        SoloMath.SoloContext memory ctx = getContext();
+        SoloMath.TradeState memory ts;
+        SoloMath.TradeReq memory t = SoloMath.TradeReq({
+            rax: ud(amount0),
+            ray: ud(amount1),
+            fee: fee,
+            bMin: bMin,
+            s_: s 
+        });
+
+        // Determines direction of the trade
+        ts = SoloMath.step0(
+            ts,
+            t
+        );
+
+        // Reset and/or rebalance the Flex position
+        conditionalRebalance(ctx, ts);
+
+        // Transfer funds in
+        amount0 > 0 ? 
+            ERC20(token0).safeTransferFrom(_msgSender(), address(this), amount0) :
+            ERC20(token1).safeTransferFrom(_msgSender(), address(this), amount1);
+        
+        // if(amount0 == 0 && amount1 == 0) revert("not possible?")
+
+        // The following steps are coordinated in tokensUsed() below.
+
+        /*
+        Step 1
+        Calculate the Ax or Ay, the specific quantity of either X or Y tokens used in the swap, by subtracting the fee.
+        Step 3
+        Estimate the new price (P') that would be reached if the trade is executed solely against the Flex position in 
+        order to determine eligibility for a partial expanded range swap.
+        Step 4
+        Determine the amount of tokens that could be sold from the Concentrated position.
+        Step 5
+        Determine amounts of tokens to be traded against the Flex position (FAx and FAy) and against the 
+        Concentrated position (CAx and CAy).
+        */
+
+        ts = tokensUsed(
+            ts,
+            t,
+            ctx
+        );
+
+        if (ts.resetsConcentratedPosition) {
+            // ... all swap to flex position (amountX, amountY) execute reset, exit
+            (ts.fox, ts.foy) = IUniswapV3Pool(pool).swap(
+                address(this),
+                ts.xForY,
+                (ts.xForY) ? int256(amount0) : int256(amount1),
+                (ts.xForY) ? 
+                      SoloUV3Math.MIN_SQRT_RATIO + 1
+                    : SoloUV3Math.MAX_SQRT_RATIO - 1,
+                abi.encode(address(this))
+            );
+            app.resetConcentratedPosition();
+            if(ts.xForY) {
+                ERC20(token1).transfer(msg.sender, uint256(ts.foy));
+            } else {
+                ERC20(token0).transfer(msg.sender, uint256(ts.fox));
+            }
+            return (uint256(ts.fox), uint256(ts.foy));
+        }
+
+        /*
+        Execute swap control flow for the partial trade against the Flex position using FAx or FAy amount from Step 5.
+        */
+       
+        // One of these will be positive and exact - amount tokens received.
+
+        (ts.fox, ts.foy) = IUniswapV3Pool(pool).swap(
+            address(this),
+            ts.xForY,
+            (ts.xForY) ? int256(UD60x18.unwrap(ts.fax)) : int256(UD60x18.unwrap(ts.fay)),
+            (ts.xForY)  
+                ? SoloUV3Math.MIN_SQRT_RATIO + 1
+                : SoloUV3Math.MAX_SQRT_RATIO - 1,
+            abi.encode(address(this))
+        );
+
+        /*
+        Step 6
+        When the swap flow is completed the pool will acquire a new spot price (SP).
+        The flow will also produce the exact amount of output tokens (FOx or FOy) from the partial trade.
+        */
+
+        ts.concentratedSwapPrice = ((spot(depositToken(), quoteToken(), ONE)))._uint160Safe();
+
+        // Step 7
+        // Formula 4.30
+
+        if (ts.xForY) {
+            UD60x18 spotXForY = ud(ts.concentratedSwapPrice);
+            // Formula 4.29
+            ts.coy = ts.cax.mul(spotXForY);
+            // Formula 4.30
+            ts.oy = SoloMath.min(ud(uint256(ts.foy)).add(ts.coy), ts.acy);
+            // oy + foy to trader
+            ERC20(token1).safeTransfer(msg.sender, UD60x18.unwrap(ts.oy)); // Y is token1
+        } else {
+            UD60x18 spotYForX = SoloMath.one().div(ud(ts.concentratedSwapPrice));
+            // Formula 4.29
+            ts.cox = ts.cax.div(spotYForX);
+            // Formula 4.30
+            ts.ox = SoloMath.min(ud(uint256(ts.fox)).add(ts.cox), ts.acx);
+            // ox + fox to trader
+            ERC20(token0).safeTransfer(msg.sender, UD60x18.unwrap(ts.ox)); // X is token0
+        }
+
+        return (UD60x18.unwrap(ts.ox), UD60x18.unwrap(ts.oy));
+    }
+
+    function tokensUsed(
+        SoloMath.TradeState memory ts,
+        SoloMath.TradeReq memory t,
+        SoloMath.SoloContext memory ctx
+    ) internal view returns (SoloMath.TradeState memory) {
+        SoloMath.ScratchPad memory s_;
+
+        (ts, s_) = SoloMath.step1(
+            ts,
+            s_,
+            t
+        );
+
+        (ts, s_) = SoloMath.step3a(
+            app,
+            ts,
+            s_,
+            t
+        );
+
+        (ts, s_) = SoloMath.step3b(
+            app,
+            ctx,
+            ts,
+            s_
+        );
+
+        (ts, s_) = SoloMath.step3c( 
+            ts,
+            s_
+        );
+
+        (ts, s_) = SoloMath.step4(
+            app,
+            ts,
+            s_,
+            t   
+        );
+
+        (ts, s_) = SoloMath.step5(
+            ctx,
+            ts,
+            s_
+        );
+
+        return (ts);
     }
 
     function depositToken() public view returns (address token) {

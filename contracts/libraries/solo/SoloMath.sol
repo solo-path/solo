@@ -73,6 +73,13 @@ library SoloMath {
         UD60x18 cay;
         UD60x18 acx;
         UD60x18 acy;
+        UD60x18 cox;
+        UD60x18 coy;
+        UD60x18 ox;
+        UD60x18 oy;
+        int256 fox;
+        int256 foy;
+        uint256 concentratedSwapPrice;
         bool xForY;
         bool resetsConcentratedPosition;
     }
@@ -477,6 +484,10 @@ library SoloMath {
         return (ts, s);
     }
 
+    function resetConcentratedPosition(SoloMath.SoloState storage self) public {
+        self.blockNumber = block.number;
+    }
+
     function getSqrtRatioAtTick(int24 tickMin) public pure returns (uint160 sqrtRatio) {
         sqrtRatio = SoloTickMath.getSqrtRatioAtTick(tickMin);
     }
@@ -501,5 +512,14 @@ library SoloMath {
         return uint128(x);
     }
 
+    /**
+     @notice uint160Safe function.
+     @param x input value.
+     @return uint160 x, provided overflow has not occured.
+     */
+    function _uint160Safe(uint256 x) public pure returns (uint160) {
+        require(x <= type(uint128).max, "IV.160_OF");
+        return uint160(x);
+    }
 
 }
