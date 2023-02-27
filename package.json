@@ -31,6 +31,7 @@
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^3.4.2-solc-0.7",
     "@typechain/ethers-v5": "^4.0.0",
     "@types/chai": "^4.2.6",
     "@types/mocha": "^5.2.7",
@@ -45,6 +46,7 @@
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
     "hardhat": "^2.2.0",
+    "hardhat-deploy": "^0.11.24",
     "hardhat-typechain": "^0.3.5",
     "immer": "^7.0.8",
     "mocha": "^6.2.2",
@@ -61,7 +63,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "build": "ncc build deploy/index.ts -o dist -m",
+    "build": "ncc build deploy-v3/index.ts -o dist -m",
     "prebuild": "hardhat compile",
     "postbuild": "cat shebang.txt dist/index.js > dist/index.cmd.js && mv dist/index.cmd.js dist/index.js",
     "deploy": "node dist/index.js"
