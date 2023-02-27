@@ -8,13 +8,20 @@ import { IUniswapV3Factory } from "../interfaces/IUniswapV3Factory.sol";
 import { IUniswapV3MintCallback } from "../interfaces/callback/IUniswapV3MintCallback.sol";
 import { IUniswapV3SwapCallback } from "../interfaces/callback/IUniswapV3SwapCallback.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Solo is ISolo, ERC20, ReentrancyGuard {
+contract Solo is ISolo, 
+    ERC20,
+    IUniswapV3MintCallback,
+    IUniswapV3SwapCallback, 
+    Initializable, 
+    ReentrancyGuard {
 
     using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     address private constant ADDRESS_NULL = address(0);
 
@@ -176,6 +183,56 @@ contract Solo is ISolo, ERC20, ReentrancyGuard {
                     tickUpper,
                     collect0,
                     collect1
+                );
+            }
+        }
+    }
+
+    function uniswapV3MintCallback(
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external {
+        require(msg.sender == address(pool), "cb1");
+        address payer = abi.decode(data, (address));
+
+        if (payer == address(this)) {
+            if (amount0 > 0) IERC20(token0).safeTransfer(msg.sender, amount0);
+            if (amount1 > 0) IERC20(token1).safeTransfer(msg.sender, amount1);
+        } else {
+            if (amount0 > 0)
+                IERC20(token0).safeTransferFrom(payer, msg.sender, amount0);
+            if (amount1 > 0)
+                IERC20(token1).safeTransferFrom(payer, msg.sender, amount1);
+        }
+    }
+
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external {
+        require(msg.sender == address(pool), "cb2");
+        address payer = abi.decode(data, (address));
+
+        if (amount0Delta > 0) {
+            if (payer == address(this)) {
+                IERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
+            } else {
+                IERC20(token0).safeTransferFrom(
+                    payer,
+                    msg.sender,
+                    uint256(amount0Delta)
+                );
+            }
+        } else if (amount1Delta > 0) {
+            if (payer == address(this)) {
+                IERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
+            } else {
+                IERC20(token1).safeTransferFrom(
+                    payer,
+                    msg.sender,
+                    uint256(amount1Delta)
                 );
             }
         }
