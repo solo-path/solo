@@ -32,11 +32,21 @@ contract Solo is ISolo,
     using SafeERC20 for IERC20;
 
     address private constant ADDRESS_NULL = address(0);
+    uint256 private constant ONE = 1e18;
+    uint32 private constant FIVE_MINUTES = 5 minutes;
 
     address public immutable pool;
     address public immutable token0;
     address public immutable token1;
     bool public immutable token0IsDeposit;
+
+    UD60x18 public bMin;
+    SD59x18 public tPct;
+    UD60x18 public s;
+    UD60x18 public fee;
+    UD60x18 public dPct;
+    UD60x18 public fPct;
+    UD60x18 public rPct;
 
     // state of the pool with all positions
     SoloMath.SoloState private app;
@@ -70,6 +80,22 @@ contract Solo is ISolo,
         token1 = tokenAIsToken0 ? tokenB_ : tokenA_;
     }
 
+    function init(
+        UD60x18 bMin_,
+        SD59x18 tPct_,
+        UD60x18 s_,
+        UD60x18 dPct_,
+        UD60x18 fPct_,
+        UD60x18 rPct_
+    ) external initializer {
+        bMin = bMin_;
+        tPct = tPct_;
+        s = s_;
+        dPct = dPct_;
+        fPct = fPct_;
+        rPct = rPct_;
+    }
+
     function firstDeposit(
         uint256 amountDeposit,
         uint256 amountQuote,
@@ -95,7 +121,44 @@ contract Solo is ISolo,
         uint256 amountDeposit,
         address to
     ) external override nonReentrant returns (uint256 lpTokens) {
-        lpTokens = 0;
+
+        // TODO add check for totalSupply > 0. This should never be the case, because firstDeposit must come in first
+
+        UD60x18 spotPrice = ud(spot(depositToken(), quoteToken(), ONE));
+        UD60x18 twapPrice = ud(twap(pool, depositToken(), quoteToken(), FIVE_MINUTES, ONE));
+        UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
+
+        UD60x18 toProtected = dPct.mul(ud(amountDeposit));
+
+        // if the difference between the spot price and the 15 minute TWAP is more than 5%
+        // TODO the check above
+
+        // or the price change in the block is more than twice the trading fee
+        // TODO the check above
+
+        ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
+
+        if (token0IsDeposit) {
+            app.protected0 = app.protected0 + UD60x18.unwrap(toProtected);
+        } else {
+            app.protected1 = app.protected1 + UD60x18.unwrap(toProtected);
+        }
+ 
+        UD60x18 valueOfDeposit = offeredPrice.mul(ud(amountDeposit));
+        UD60x18 valueIncreasePercent = 
+            valueOfDeposit.div(
+                ud(capitalAsQuoteTokens(UD60x18.unwrap(SoloMath.max(spotPrice, twapPrice)))).add(valueOfDeposit)
+            );
+ 
+        UD60x18 lpAmount = ud(totalSupply()).mul(valueIncreasePercent);
+        lpTokens = UD60x18.unwrap(lpAmount);
+        _mint(to, lpTokens);
+
+        // The allocation of tokens between the Flex position and the Concentrated position is reassessed after deposits 
+        // and before trades.
+        // TODO the above  
+
+        // TODO increase app.x and app.y ??
     }
 
     /**

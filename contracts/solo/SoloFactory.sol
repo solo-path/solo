@@ -4,6 +4,7 @@ pragma solidity 0.8.14;
 
 import { Solo } from "./Solo.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { SD59x18, UD60x18 } from "../libraries/solo/SoloMath.sol";
 
 contract SoloFactory is Ownable {
 
@@ -20,7 +21,13 @@ contract SoloFactory is Ownable {
         address tokenX,
         address tokenY,
         bool xIsDeposit,
-        uint24 fee
+        uint24 fee,
+        UD60x18 bMin,
+        SD59x18 tPct,
+        UD60x18 s,
+        UD60x18 dPct,
+        UD60x18 fPct,
+        UD60x18 rPct
     ) external returns (Solo soloPool) {
 
         string memory lpName = _lpName(
@@ -43,6 +50,15 @@ contract SoloFactory is Ownable {
                 lpName,
                 lpSymbol
             );
+
+        soloPool.init(
+                bMin,
+                tPct,
+                s,
+                dPct,
+                fPct,
+                rPct
+        );
 
         deployedPools.push(address(soloPool));
         
