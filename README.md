@@ -1,4 +1,4 @@
-# 1. Solo - The Proactive
+# 1. Solo - The Proactive AMM
 
 Solo is the first market maker to eliminate the zero-sum game between arbitrageurs and liquidity providers (LPs). 
 
