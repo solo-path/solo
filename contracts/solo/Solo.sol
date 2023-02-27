@@ -189,7 +189,12 @@ contract Solo is ISolo,
 
         // The allocation of tokens between the Flex position and the Concentrated position is reassessed after deposits 
         // and before trades.
-        // TODO the above  
+        if(bMin.lt(ud(block.number - app.blockNumber))) {
+            SoloMath.SoloContext memory ctx = getContext();            
+            (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
+            pullFlexPosition();
+            putFlexPosition(ctx);
+        }
 
         // TODO increase app.x and app.y ??
     }
