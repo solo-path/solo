@@ -109,7 +109,45 @@ contract Solo is ISolo,
         uint256 lpAmount, 
         address to
     ) external override nonReentrant returns (uint256 amountDeposit, uint256 amountQuote) {
-        return (0, 0);
+
+        transferFrom(msg.sender, address(this), lpAmount);
+        _burn(address(this), lpAmount);
+
+        uint256 lpSupply = totalSupply();
+
+        // Withdraw ratio amount of liquidity
+
+        int24 tickLower = int24(SD59x18.unwrap(app.tMin));
+        int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
+
+        (uint256 amount0, uint256 amount1) = _burnLiquidity(
+            _liquidityForShares(tickLower, tickUpper, lpAmount),
+            tickLower,
+            tickUpper,
+            address(this), 
+            false);
+
+        amountDeposit = (token0IsDeposit) ? amount0 : amount1;
+        amountQuote = (token0IsDeposit) ? amount1 : amount0;
+
+        // Withdraw ratio amount of protected and concentrated
+
+        (uint256 protected0, uint256 protected1) = protectedPosition();
+        (uint256 concentrated0, uint256 concentrated1) = concentratedPosition();
+
+        if (token0IsDeposit) {
+            amountDeposit += lpAmount * protected0 / lpSupply;
+            amountDeposit += lpAmount * concentrated0 / lpSupply;
+        } else {
+            amountDeposit += lpAmount * protected1 / lpSupply;
+            amountDeposit += lpAmount * concentrated1 / lpSupply;
+        }
+
+        // send sums to user
+        ERC20(depositToken()).safeTransfer(to, amountDeposit);
+        ERC20(quoteToken()).safeTransfer(to, amountQuote);
+
+        // TODO reduce app.x and app.y ??
     }
 
     function swapExactInput(
@@ -301,6 +339,45 @@ contract Solo is ISolo,
         (, int24 tick_, , , , , bool unlocked_) = IUniswapV3Pool(pool).slot0();
         require(unlocked_, "IV.currentTick: the pool is locked");
         tick = tick_;
+    }
+
+    /**
+     @notice Calculates liquidity amount for the given shares.
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param shares number of shares
+     */
+    function _liquidityForShares(
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 shares
+    ) internal view returns (uint128) {
+        (uint128 position, , ) = _flexPosition(tickLower, tickUpper);
+        return (position * shares / totalSupply())._uint128Safe();
+    }
+
+    /**
+     @notice Returns information about the liquidity position.
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param liquidity liquidity amount
+     @param tokensOwed0 amount of token0 owed to the owner of the position
+     @param tokensOwed1 amount of token1 owed to the owner of the position
+     */
+    function _flexPosition(int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (
+            uint128 liquidity,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
+    {
+        bytes32 positionKey = keccak256(
+            abi.encodePacked(address(this), tickLower, tickUpper)
+        );
+        (liquidity, , , tokensOwed0, tokensOwed1) = IUniswapV3Pool(pool)
+            .positions(positionKey);
     }
 
     /**
