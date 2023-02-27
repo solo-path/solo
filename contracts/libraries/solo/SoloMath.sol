@@ -7,6 +7,8 @@ import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import { E } from "@prb/math/src/ud60x18/Constants.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { SoloUV3Math, SoloTickMath, SoloOracleLibrary } from "./SoloUV3Math.sol";
+import { IUniswapV3Pool } from "../../interfaces/IUniswapV3Pool.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -37,6 +39,8 @@ library SoloMath {
         UD60x18 pf;
         UD60x18 sqrtPMin;
         UD60x18 sqrtPMax;
+        uint256 protected0;
+        uint256 protected1;
         uint256 blockNumber;
     }
 
@@ -472,5 +476,30 @@ library SoloMath {
 
         return (ts, s);
     }
+
+    function getSqrtRatioAtTick(int24 tickMin) public pure returns (uint160 sqrtRatio) {
+        sqrtRatio = SoloTickMath.getSqrtRatioAtTick(tickMin);
+    }
+
+    /**
+     @notice Returns current price tick
+     @param tick Uniswap pool's current price tick
+     */
+    function currentTick(address pool) public view returns (int24 tick) {
+        (, int24 tick_, , , , , bool unlocked_) = IUniswapV3Pool(pool).slot0();
+        require(unlocked_, "IV.currentTick: the pool is locked");
+        tick = tick_;
+    }
+
+    /**
+     @notice uint128Safe function.
+     @param x input value.
+     @return uint128 x, provided overflow has not occured.
+     */
+    function _uint128Safe(uint256 x) public pure returns (uint128) {
+        require(x <= type(uint128).max, "IV.128_OF");
+        return uint128(x);
+    }
+
 
 }

@@ -13,6 +13,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SoloUV3Math, SoloTickMath, SoloOracleLibrary } from "../libraries/solo/SoloUV3Math.sol";
+import { SoloMath, SD59x18, UD60x18, sd, ud } from "../libraries/solo/SoloMath.sol";
 
 contract Solo is ISolo, 
     ERC20,
@@ -21,6 +22,12 @@ contract Solo is ISolo,
     Initializable, 
     ReentrancyGuard {
 
+    using SoloMath for SoloMath.SoloState;
+    using SoloMath for address;
+    using SoloMath for uint256;
+    using SoloMath for int256;
+    using SoloMath for uint160;
+    using SoloMath for SD59x18;
     using SafeERC20 for ERC20;
     using SafeERC20 for IERC20;
 
@@ -30,6 +37,9 @@ contract Solo is ISolo,
     address public immutable token0;
     address public immutable token1;
     bool public immutable token0IsDeposit;
+
+    // state of the pool with all positions
+    SoloMath.SoloState private app;
 
     constructor(
         address uv3PoolFactory_,
@@ -111,14 +121,58 @@ contract Solo is ISolo,
         return (0, 0);
     }
 
+    function depositToken() public view returns (address token) {
+        token = (token0IsDeposit) ? token0 : token1;
+    }
+
+    function quoteToken() public view returns (address token) {
+        token = (token0IsDeposit) ? token1 : token0;
+    }
+
+    function currentTick() public view returns (int24 tick) {
+        tick = pool.currentTick();
+    }
+
     /**
-     @notice uint128Safe function.
-     @param x input value.
-     @return uint128 x, provided overflow has not occured.
+     @notice A portion of the deposit tokens on hand is protected and does not participate in liquidity.
+     @return amount0 Protected token0 tokens.
+     @return amount1 Protected token0 tokens.
      */
-    function _uint128Safe(uint256 x) public pure returns (uint128) {
-        require(x <= type(uint128).max, "IV.128_OF");
-        return uint128(x);
+    function protectedPosition() public view returns (uint256 amount0, uint256 amount1) {
+        amount0 = app.protected0;
+        amount1 = app.protected1;
+    }
+
+    /**
+     @notice A portiom of the deposit tokens on hand participates concentrated liquidity.
+     @return amount0 token0 tokens in the dynamicaly allocated concentrated liquidity position. 
+     @return amount1 token1 tokens in the dynamicaly allocated concentrated liquidity position. 
+     */
+    function concentratedPosition() public view returns (uint256 amount0, uint256 amount1) {
+        amount0 = ERC20(token0).balanceOf(address(this)) - app.protected0;
+        amount1 = ERC20(token1).balanceOf(address(this)) - app.protected1;
+    }
+
+    /**
+     @notice This contract owns a position in a Uv3 pool, the flex position. 
+     @return amountDeposit The amount of deposit tokens in the flex position liquidity. 
+     @return amountQuote The amount of quote tokens  in the flex position liquidity. 
+     */
+    function flexPosition() public view returns (uint256 amountDeposit, uint256 amountQuote) {
+        int24 tickMin = int24(SD59x18.unwrap(app.tMin));
+        int24 tickMax = int24(SD59x18.unwrap(app.tMax));
+        (uint256 amount0, uint256 amount1) = SoloUV3Math.getAmountsForLiquidity(
+            spot(
+                depositToken(),
+                quoteToken(),
+                1
+            ),
+            SoloMath.getSqrtRatioAtTick(tickMin),
+            SoloMath.getSqrtRatioAtTick(tickMax),
+            (ERC20(pool).balanceOf(address(this)))._uint128Safe()
+        );
+        amountDeposit = (token0IsDeposit) ? amount0 : amount1;
+        amountQuote = (token0IsDeposit) ? amount1 : amount0;
     }
 
     /**
@@ -173,10 +227,10 @@ contract Solo is ISolo,
             // Collect amount owed
             uint128 collect0 = collectAll
                 ? type(uint128).max
-                : _uint128Safe(owed0);
+                : owed0._uint128Safe();
             uint128 collect1 = collectAll
                 ? type(uint128).max
-                : _uint128Safe(owed1);
+                : owed1._uint128Safe();
             if (collect0 > 0 || collect1 > 0) {
                 (amount0, amount1) = IUniswapV3Pool(pool).collect(
                     to,
@@ -275,12 +329,35 @@ contract Solo is ISolo,
     }
 
     /**
+     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using spot price
+     @param tokenIn token the input amount is in
+     @param tokenOut token for the output amount
+     @param amountIn amount in _tokenIn
+     @return amountOut equivalent anount in _tokenOut
+     */
+    function spot(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) public view returns (uint160 amountOut) { 
+        return
+            (
+                SoloUV3Math.getQuoteAtTick(
+                    currentTick(),
+                    SoloUV3Math.toUint128(amountIn),
+                    tokenIn,
+                    tokenOut
+                )
+            )._uint128Safe();
+    } 
+
+    /**
      @notice returns equivalent _tokenOut for _amountIn, _tokenIn using TWAP price
      @param _twapPeriod the averaging time period
      @param _amountIn amount in _tokenIn
      @param amountOut equivalent anount in _tokenOut
      */
-    function fetchTwap(
+    function twap(
         address pool,
         address depositToken_,
         address quoteToken_,
