@@ -272,6 +272,75 @@ contract Solo is ISolo,
         tick = pool.currentTick();
     }
 
+    function conditionalRebalance(
+        SoloMath.SoloContext memory ctx,
+        SoloMath.TradeState memory ts
+    ) internal returns (SoloMath.SoloContext memory) {
+
+        /*
+            Substeps:
+            a) determine direction of the proposed trade (ts.xForY)
+            b) call computeFlexPosition. If resulting Tmin/Tmax differ from current Tmin/Tmax values and the trade
+                is in the direction of pushing the boundary further out, the rebalance is required before the trade
+                is executed. Go to substep e) 
+            c) call computeFxFy to compute possible Fx and Fy
+            d) call preTradeAssessment with Fx and Fy from substep b) to see if rebalance is needed. 
+                If yes, go to substep e)
+                Otherwise, skip to substep f)
+            e) reset Flex position in UniV3 using Tmin/Tmax (from c)) and Fx/Fy (from b)) 
+            f) obtain Fx and Fy from the current Flex position
+            g) call computeCxCy to compute Cx and Cy
+        */
+
+        SD59x18 newTMin;
+        SD59x18 newTMax;
+
+        // a) ts.xForY is already set in ts
+
+        // b)
+
+        (newTMin, newTMax) = app.computeFlexPosition(ctx, tPct);
+        
+        if(!newTMin.eq(app.tMin) && ts.xForY) {
+            // e)
+            (uint256 amount0, uint256 amount1) = pullFlexPosition();
+            app.tMin = newTMin;
+            ctx.fX = ud(amount0);
+            ctx.fY = ud(amount1);
+            putFlexPosition(ctx);
+        } else if(!newTMax.eq(app.tMax) && !ts.xForY) {
+            // e)
+            (uint256 amount0, uint256 amount1) = pullFlexPosition();
+            app.tMax = newTMax;
+            ctx.fX = ud(amount0);
+            ctx.fY = ud(amount1);
+            putFlexPosition(ctx);
+        } else {
+            // Rebalancing is avoided if the number of blocks since the high volatility trigger is less than block delay.
+            if(bMin.lt(ud(block.number - app.blockNumber))) {
+                // c
+                (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
+                // d) call preTradeAssessment to see if Flex and Concentrated positions should be rebalanced
+                // A rebalance is executed prior to a trade if either (4.10) or (4.11) is TRUE.
+                if(app.preTradeAssessment(ctx, fPct, rPct)) {
+                    pullFlexPosition();
+                    // the position will get placed back within the same boundaries but with different fX and fY
+                    putFlexPosition(ctx);
+                }
+            }
+        }
+
+        // f) determine actual fX and fY amounts in Flex position
+        (uint256 amountDeposit, uint256 amountQuote) = flexPosition();
+        ctx.fX = ud(amountDeposit);
+        ctx.fY = ud(amountQuote);
+        
+        // g) determine cX and cY amounts in Concentrated position
+
+        (ctx.cX, ctx.cY) = app.computeCxCy(ctx);
+        return ctx;
+    }
+
     function pullFlexPosition() internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = _burnLiquidity(
             uint128(ERC20(pool).balanceOf(address(this))),
