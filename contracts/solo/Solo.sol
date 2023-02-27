@@ -74,7 +74,7 @@ contract Solo is ISolo,
         );
 
         bool tokenAIsToken0 = tokenA_ < tokenB_;
-        token0IsDeposit = tokenAIsToken0 && tokenAIsDeposit_;
+        token0IsDeposit = (tokenAIsToken0 && tokenAIsDeposit_) || (!tokenAIsToken0 && !tokenAIsDeposit_);
 
         token0 = tokenAIsToken0 ? tokenA_ : tokenB_;
         token1 = tokenAIsToken0 ? tokenB_ : tokenA_;
