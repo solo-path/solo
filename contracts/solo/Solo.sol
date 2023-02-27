@@ -12,6 +12,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SoloUV3Math, SoloTickMath, SoloOracleLibrary } from "../libraries/solo/SoloUV3Math.sol";
 
 contract Solo is ISolo, 
     ERC20,
@@ -236,6 +237,66 @@ contract Solo is ISolo,
                 );
             }
         }
+    }
+
+    /**
+     @notice Returns current price tick
+     @param tick Uniswap pool's current price tick
+     */
+    function currentTick(address pool) public view returns (int24 tick) {
+        (, int24 tick_, , , , , bool unlocked_) = IUniswapV3Pool(pool).slot0();
+        require(unlocked_, "IV.currentTick: the pool is locked");
+        tick = tick_;
+    }
+
+    /**
+     @notice Calculates amount of liquidity in a position for given token0 and token1 amounts
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param amount0 token0 amount
+     @param amount1 token1 amount
+     */
+    function liquidityForAmounts(
+        address pool,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) public view returns (uint128) {
+        (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        return
+            SoloUV3Math.getLiquidityForAmounts(
+                sqrtRatioX96,
+                SoloUV3Math.getSqrtRatioAtTick(tickLower),
+                SoloUV3Math.getSqrtRatioAtTick(tickUpper),
+                amount0,
+                amount1
+            );
+    }
+
+    /**
+     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using TWAP price
+     @param _twapPeriod the averaging time period
+     @param _amountIn amount in _tokenIn
+     @param amountOut equivalent anount in _tokenOut
+     */
+    function fetchTwap(
+        address pool,
+        address depositToken_,
+        address quoteToken_,
+        uint32 _twapPeriod,
+        uint256 _amountIn
+    ) public view returns (uint256 amountOut) {
+        uint32 oldestSecondsAgo = SoloOracleLibrary.getOldestObservationSecondsAgo(pool);
+        _twapPeriod = (_twapPeriod < oldestSecondsAgo) ? _twapPeriod : oldestSecondsAgo;
+        int256 twapTick = SoloUV3Math.consult(pool, _twapPeriod);
+        return
+            SoloUV3Math.getQuoteAtTick(
+                int24(twapTick), // can assume safe being result from consult()
+                SoloUV3Math.toUint128(_amountIn),
+                depositToken_,
+                quoteToken_
+            );
     }
 
 }
