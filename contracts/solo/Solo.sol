@@ -264,6 +264,22 @@ contract Solo is ISolo,
             uint128(liquidity));
     }
 
+    function getContext() public view returns (SoloMath.SoloContext memory context) {
+        
+        UD60x18 uninitialized;
+
+        (uint160 sqrtP, , , , , , ) = IUniswapV3Pool(pool).slot0();
+
+        context = SoloMath.SoloContext({
+            cX: uninitialized,
+            cY: uninitialized,
+            fX: uninitialized,
+            fY: uninitialized,
+            sqrtP: ud(uint256(sqrtP)),
+            tC: sd(pool.currentTick())
+        });
+    }
+
     /**
      @notice Calculate total value of the pool in quote tokens.
      @return value total value of the pool
