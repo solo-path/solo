@@ -33,7 +33,10 @@ contract Solo is ISolo,
 
     address private constant ADDRESS_NULL = address(0);
     uint256 private constant ONE = 1e18;
+    uint256 private constant FIVE = 5e18;
+    uint256 private constant HUNDRED = 100e18;
     uint32 private constant FIVE_MINUTES = 5 minutes;
+    uint32 private constant FIFTEEN_MINUTES = 15 minutes;
 
     address public immutable pool;
     address public immutable token0;
@@ -160,13 +163,21 @@ contract Solo is ISolo,
         UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
+        app.updatePf(spotPrice);
+
+        UD60x18 percent5 = ud(FIVE).div(ud(HUNDRED));
         UD60x18 toProtected = dPct.mul(ud(amountDeposit));
 
         // if the difference between the spot price and the 15 minute TWAP is more than 5%
-        // TODO the check above
+        if(ud(pool.spot(depositToken(), quoteToken(), ONE)).div(
+            ud(pool.twap(depositToken(), quoteToken(), FIFTEEN_MINUTES, ONE))).gt(percent5)) {
+            revert ("v");
+        }
 
         // or the price change in the block is more than twice the trading fee
-        // TODO the check above
+        if(offeredPrice.div(app.pf). gt(fee.mul(SoloMath.two()))) {
+            revert ("m");
+        }
 
         ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
 
@@ -209,6 +220,7 @@ contract Solo is ISolo,
         uint256 lpAmount, 
         address to
     ) external override nonReentrant returns (uint256 amountDeposit, uint256 amountQuote) {
+        app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
 
         transferFrom(msg.sender, address(this), lpAmount);
         _burn(address(this), lpAmount);
@@ -258,6 +270,8 @@ contract Solo is ISolo,
         returns (uint256 output0, uint256 output1) {
 
         if (amount0 * amount1 != 0) revert ( "a" );
+
+        app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
 
         SoloMath.SoloContext memory ctx = getContext();
         SoloMath.TradeState memory ts;

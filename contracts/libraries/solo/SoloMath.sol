@@ -488,6 +488,14 @@ library SoloMath {
         self.blockNumber = block.number;
     }
 
+    function updatePf(SoloMath.SoloState storage self, UD60x18 p) public {
+        uint256 blockNumber = block.number;
+        if (self.blockNumber < blockNumber) {
+            self.blockNumber = blockNumber;
+            self.pf = p;
+        }
+    }
+
     function getSqrtPricesForMinMaxTicks(
         address pool,
         address depositToken,
