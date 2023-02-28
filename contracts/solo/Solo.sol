@@ -158,7 +158,7 @@ contract Solo is ISolo,
         // TODO add check for totalSupply > 0. This should never be the case, because firstDeposit must come in first
 
         UD60x18 spotPrice = ud(spot(depositToken(), quoteToken(), ONE));
-        UD60x18 twapPrice = ud(twap(pool, depositToken(), quoteToken(), FIVE_MINUTES, ONE));
+        UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
         UD60x18 toProtected = dPct.mul(ud(amountDeposit));
@@ -221,7 +221,8 @@ contract Solo is ISolo,
         int24 tickLower = int24(SD59x18.unwrap(app.tMin));
         int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
 
-        (uint256 amount0, uint256 amount1) = _burnLiquidity(
+        (uint256 amount0, uint256 amount1) = SoloMath._burnLiquidity(
+            pool,
             _liquidityForShares(tickLower, tickUpper, lpAmount),
             tickLower,
             tickUpper,
@@ -504,7 +505,8 @@ contract Solo is ISolo,
     }
 
     function pullFlexPosition() internal returns (uint256 amount0, uint256 amount1) {
-        (amount0, amount1) = _burnLiquidity(
+        (amount0, amount1) = SoloMath._burnLiquidity(
+            pool,
             uint128(ERC20(pool).balanceOf(address(this))),
             int24(SD59x18.unwrap(app.tMin)),
             int24(SD59x18.unwrap(app.tMax)),
@@ -519,15 +521,15 @@ contract Solo is ISolo,
         int24 tickLower = int24(SD59x18.unwrap(app.tMin));
         int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
 
-        uint256 liquidity = _liquidityForAmounts(
-            pool,
+        uint256 liquidity = pool.liquidityForAmounts(
             tickLower,
             tickUpper,
             UD60x18.unwrap(ctx.fX),
             UD60x18.unwrap(ctx.fY)
         );
 
-        (amount0, amount1) = _mintLiquidity(
+        (amount0, amount1) = SoloMath._mintLiquidity(
+            pool,
             tickLower, 
             tickUpper, 
             uint128(liquidity));
@@ -626,124 +628,6 @@ contract Solo is ISolo,
     }
 
     /**
-     @notice Mint liquidity in Uniswap V3 pool.
-     @param tickLower The lower tick of the liquidity position
-     @param tickUpper The upper tick of the liquidity position
-     @param liquidity Amount of liquidity to mint
-     @param amount0 Used amount of token0
-     @param amount1 Used amount of token1
-     */
-    function _mintLiquidity(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
-    ) internal returns (uint256 amount0, uint256 amount1) {
-        if (liquidity > 0) {
-            (amount0, amount1) = IUniswapV3Pool(pool).mint(
-                address(this),
-                tickLower,
-                tickUpper,
-                liquidity,
-                abi.encode(address(this))
-            );
-        }
-    }
-
-    /**
-     @notice Burn liquidity in Uniswap V3 pool.
-     @param liquidity amount of liquidity to burn
-     @param tickLower The lower tick of the flex liquidity position
-     @param tickUpper The upper tick of the flex liquidity position
-     @param to The account to receive token0 and token1 amounts
-     @param collectAll Flag that indicates whether all token0 and token1 tokens should be collected or only the ones released during this burn
-     @param amount0 released amount of token0
-     @param amount1 released amount of token1
-     */
-    function _burnLiquidity(
-        uint128 liquidity,
-        int24 tickLower,
-        int24 tickUpper,
-        address to,
-        bool collectAll
-    ) internal returns (uint256 amount0, uint256 amount1) {
-        if (liquidity > 0) {
-            // Burn liquidity
-            (uint256 owed0, uint256 owed1) = IUniswapV3Pool(pool).burn(
-                tickLower,
-                tickUpper,
-                liquidity
-            );
-
-            // Collect amount owed
-            uint128 collect0 = collectAll
-                ? type(uint128).max
-                : owed0._uint128Safe();
-            uint128 collect1 = collectAll
-                ? type(uint128).max
-                : owed1._uint128Safe();
-            if (collect0 > 0 || collect1 > 0) {
-                (amount0, amount1) = IUniswapV3Pool(pool).collect(
-                    to,
-                    tickLower,
-                    tickUpper,
-                    collect0,
-                    collect1
-                );
-            }
-        }
-    }
-
-    function uniswapV3MintCallback(
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external {
-        require(msg.sender == address(pool), "cb1");
-        address payer = abi.decode(data, (address));
-
-        if (payer == address(this)) {
-            if (amount0 > 0) IERC20(token0).safeTransfer(msg.sender, amount0);
-            if (amount1 > 0) IERC20(token1).safeTransfer(msg.sender, amount1);
-        } else {
-            if (amount0 > 0)
-                IERC20(token0).safeTransferFrom(payer, msg.sender, amount0);
-            if (amount1 > 0)
-                IERC20(token1).safeTransferFrom(payer, msg.sender, amount1);
-        }
-    }
-
-    function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata data
-    ) external {
-        require(msg.sender == address(pool), "cb2");
-        address payer = abi.decode(data, (address));
-
-        if (amount0Delta > 0) {
-            if (payer == address(this)) {
-                IERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
-            } else {
-                IERC20(token0).safeTransferFrom(
-                    payer,
-                    msg.sender,
-                    uint256(amount0Delta)
-                );
-            }
-        } else if (amount1Delta > 0) {
-            if (payer == address(this)) {
-                IERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
-            } else {
-                IERC20(token1).safeTransferFrom(
-                    payer,
-                    msg.sender,
-                    uint256(amount1Delta)
-                );
-            }
-        }
-    }
-
-    /**
      @notice Returns current price tick
      @param tick Uniswap pool's current price tick
      */
@@ -793,31 +677,6 @@ contract Solo is ISolo,
     }
 
     /**
-     @notice Calculates amount of liquidity in a position for given token0 and token1 amounts
-     @param tickLower The lower tick of the liquidity position
-     @param tickUpper The upper tick of the liquidity position
-     @param amount0 token0 amount
-     @param amount1 token1 amount
-     */
-    function _liquidityForAmounts(
-        address pool,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 amount0,
-        uint256 amount1
-    ) public view returns (uint128) {
-        (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
-        return
-            SoloUV3Math.getLiquidityForAmounts(
-                sqrtRatioX96,
-                SoloUV3Math.getSqrtRatioAtTick(tickLower),
-                SoloUV3Math.getSqrtRatioAtTick(tickUpper),
-                amount0,
-                amount1
-            );
-    }
-
-    /**
      @notice returns equivalent _tokenOut for _amountIn, _tokenIn using spot price
      @param tokenIn token the input amount is in
      @param tokenOut token for the output amount
@@ -840,29 +699,34 @@ contract Solo is ISolo,
             )._uint128Safe();
     } 
 
-    /**
-     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using TWAP price
-     @param _twapPeriod the averaging time period
-     @param _amountIn amount in _tokenIn
-     @param amountOut equivalent anount in _tokenOut
-     */
-    function twap(
-        address pool,
-        address depositToken_,
-        address quoteToken_,
-        uint32 _twapPeriod,
-        uint256 _amountIn
-    ) public view returns (uint256 amountOut) {
-        uint32 oldestSecondsAgo = SoloOracleLibrary.getOldestObservationSecondsAgo(pool);
-        _twapPeriod = (_twapPeriod < oldestSecondsAgo) ? _twapPeriod : oldestSecondsAgo;
-        int256 twapTick = SoloUV3Math.consult(pool, _twapPeriod);
-        return
-            SoloUV3Math.getQuoteAtTick(
-                int24(twapTick), // can assume safe being result from consult()
-                SoloUV3Math.toUint128(_amountIn),
-                depositToken_,
-                quoteToken_
-            );
+    function uniswapV3MintCallback(
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external override {
+        SoloMath.uniswapV3MintCallback(
+            pool,
+            token0,
+            token1,
+            amount0,
+            amount1,
+            data
+        );
+    }
+
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external override {
+        SoloMath.uniswapV3SwapCallback(
+            pool,
+            token0,
+            token1,
+            amount0Delta,
+            amount1Delta,
+            data
+        );
     }
 
 }

@@ -3,10 +3,9 @@
 pragma solidity 0.8.14;
 
 import { Solo } from "./Solo.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SD59x18, UD60x18 } from "../libraries/solo/SoloMath.sol";
 
-contract SoloFactory is Ownable {
+contract SoloFactory {
 
     address private constant NULL_ADDRESS = address(0);
     address public immutable poolFactory;

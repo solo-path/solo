@@ -522,4 +522,180 @@ library SoloMath {
         return uint160(x);
     }
 
+/**
+     @notice Mint liquidity in Uniswap V3 pool.
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param liquidity Amount of liquidity to mint
+     @param amount0 Used amount of token0
+     @param amount1 Used amount of token1
+     */
+    function _mintLiquidity(
+        address pool,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) public returns (uint256 amount0, uint256 amount1) {
+        if (liquidity > 0) {
+            (amount0, amount1) = IUniswapV3Pool(pool).mint(
+                address(this),
+                tickLower,
+                tickUpper,
+                liquidity,
+                abi.encode(address(this))
+            );
+        }
+    }
+
+    /**
+     @notice Burn liquidity in Uniswap V3 pool.
+     @param liquidity amount of liquidity to burn
+     @param tickLower The lower tick of the flex liquidity position
+     @param tickUpper The upper tick of the flex liquidity position
+     @param to The account to receive token0 and token1 amounts
+     @param collectAll Flag that indicates whether all token0 and token1 tokens should be collected or only the ones released during this burn
+     @param amount0 released amount of token0
+     @param amount1 released amount of token1
+     */
+    function _burnLiquidity(
+        address pool,
+        uint128 liquidity,
+        int24 tickLower,
+        int24 tickUpper,
+        address to,
+        bool collectAll
+    ) public returns (uint256 amount0, uint256 amount1) {
+        if (liquidity > 0) {
+            // Burn liquidity
+            (uint256 owed0, uint256 owed1) = IUniswapV3Pool(pool).burn(
+                tickLower,
+                tickUpper,
+                liquidity
+            );
+
+            // Collect amount owed
+            uint128 collect0 = collectAll
+                ? type(uint128).max
+                : _uint128Safe(owed0);
+            uint128 collect1 = collectAll
+                ? type(uint128).max
+                : _uint128Safe(owed1);
+            if (collect0 > 0 || collect1 > 0) {
+                (amount0, amount1) = IUniswapV3Pool(pool).collect(
+                    to,
+                    tickLower,
+                    tickUpper,
+                    collect0,
+                    collect1
+                );
+            }
+        }
+    }
+
+    function uniswapV3MintCallback(
+        address pool,
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external {
+        require(msg.sender == address(pool), "cb1");
+        address payer = abi.decode(data, (address));
+
+        if (payer == address(this)) {
+            if (amount0 > 0) IERC20(token0).safeTransfer(msg.sender, amount0);
+            if (amount1 > 0) IERC20(token1).safeTransfer(msg.sender, amount1);
+        } else {
+            if (amount0 > 0)
+                IERC20(token0).safeTransferFrom(payer, msg.sender, amount0);
+            if (amount1 > 0)
+                IERC20(token1).safeTransferFrom(payer, msg.sender, amount1);
+        }
+    }
+
+    function uniswapV3SwapCallback(
+        address pool,
+        address token0,
+        address token1,
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external {
+        require(msg.sender == address(pool), "cb2");
+        address payer = abi.decode(data, (address));
+
+        if (amount0Delta > 0) {
+            if (payer == address(this)) {
+                IERC20(token0).safeTransfer(msg.sender, uint256(amount0Delta));
+            } else {
+                IERC20(token0).safeTransferFrom(
+                    payer,
+                    msg.sender,
+                    uint256(amount0Delta)
+                );
+            }
+        } else if (amount1Delta > 0) {
+            if (payer == address(this)) {
+                IERC20(token1).safeTransfer(msg.sender, uint256(amount1Delta));
+            } else {
+                IERC20(token1).safeTransferFrom(
+                    payer,
+                    msg.sender,
+                    uint256(amount1Delta)
+                );
+            }
+        }
+    }
+
+    /**
+     @notice Calculates amount of liquidity in a position for given token0 and token1 amounts
+     @param tickLower The lower tick of the liquidity position
+     @param tickUpper The upper tick of the liquidity position
+     @param amount0 token0 amount
+     @param amount1 token1 amount
+     */
+    function liquidityForAmounts(
+        address pool,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amount0,
+        uint256 amount1
+    ) public view returns (uint128) {
+        (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        return
+            SoloUV3Math.getLiquidityForAmounts(
+                sqrtRatioX96,
+                getSqrtRatioAtTick(tickLower),
+                getSqrtRatioAtTick(tickUpper),
+                amount0,
+                amount1
+            );
+    }
+
+    /**
+     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using TWAP price
+     @param _twapPeriod the averaging time period
+     @param _amountIn amount in _tokenIn
+     @param amountOut equivalent anount in _tokenOut
+     */
+    function twap(
+        address pool,
+        address depositToken_,
+        address quoteToken_,
+        uint32 _twapPeriod,
+        uint256 _amountIn
+    ) public view returns (uint256 amountOut) {
+        uint32 oldestSecondsAgo = SoloOracleLibrary.getOldestObservationSecondsAgo(pool);
+        _twapPeriod = (_twapPeriod < oldestSecondsAgo) ? _twapPeriod : oldestSecondsAgo;
+        int256 twapTick = SoloUV3Math.consult(pool, _twapPeriod);
+        return
+            SoloUV3Math.getQuoteAtTick(
+                int24(twapTick), // can assume safe being result from consult()
+                SoloUV3Math.toUint128(_amountIn),
+                depositToken_,
+                quoteToken_
+            );
+    }
+
 }
