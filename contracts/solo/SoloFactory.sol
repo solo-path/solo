@@ -2,8 +2,7 @@
 
 pragma solidity 0.8.14;
 
-import { Solo } from "./Solo.sol";
-import { SD59x18, UD60x18 } from "../libraries/solo/SoloMath.sol";
+import { Solo, SoloMath, SD59x18, UD60x18, sd, ud } from "./Solo.sol";
 
 contract SoloFactory {
 
@@ -31,14 +30,17 @@ contract SoloFactory {
 
         string memory lpName = _lpName(
             (tokenX < tokenY) ? tokenX : tokenY, 
-            (tokenX < tokenY) ? tokenY : tokenX);
+            (tokenX < tokenY) ? tokenY : tokenX, 
+            dPct);
         string memory lpSymbol = _lpSymbol(
             (tokenX < tokenY) ? tokenX : tokenY, 
-            (tokenX < tokenY) ? tokenY : tokenX);
+            (tokenX < tokenY) ? tokenY : tokenX, 
+            dPct);
 
         bytes32 salt = keccak256(abi.encode(
                 (tokenX < tokenY) ? tokenX : tokenY, 
-                (tokenX < tokenY) ? tokenY : tokenX));
+                (tokenX < tokenY) ? tokenY : tokenX, 
+                dPct ));
 
         soloPool = new Solo{ salt: salt } (
                 poolFactory,
@@ -63,11 +65,12 @@ contract SoloFactory {
         
     }
 
-    function _lpName(address token0, address token1) internal view returns (string memory lpName_) {
-        lpName_ = "test";
+    function _lpName(address token0, address token1, UD60x18 dPct) internal view returns (string memory lpName_) {
+        lpName_ = SoloMath.lpName(token0, token1, dPct);
     }
-    function _lpSymbol(address token0, address token1) internal view returns (string memory lpSymbol_) {
-        lpSymbol_ = "test";
+    // e.g. WETH-USDC-50
+    function _lpSymbol(address token0, address token1, UD60x18 dPct) internal view returns (string memory lpSymbol_) {
+        lpSymbol_ = SoloMath.lpSymbol(token0, token1, dPct);
     }
 
 }

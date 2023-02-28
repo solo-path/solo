@@ -722,4 +722,25 @@ library SoloMath {
             );
     }
 
+    // e.g. Solo WETH-USDC-50
+    function lpName(address token0, address token1, UD60x18 dPct) public view returns (string memory lpName_) {
+        lpName_ = string.concat("Solo ", lpSymbol(
+            token0,
+            token1,
+            dPct
+        ));
+    }
+    // e.g. WETH-USDC-50
+    function lpSymbol(address token0, address token1, UD60x18 dPct) public view returns (string memory lpSymbol_) {
+        IERC20Metadata x = IERC20Metadata(token0);
+        IERC20Metadata y = IERC20Metadata(token1);
+        string memory xSymbol = x.symbol();
+        string memory ySymbol = y.symbol();
+        lpSymbol_ = string.concat(string.concat(string.concat(string.concat(xSymbol,"-"), ySymbol), ":"), dPctString(dPct)); 
+    }
+
+    function dPctString(UD60x18 dPct) public pure returns (string memory shortString) {
+        shortString = Strings.toString(uint256(UD60x18.unwrap(dPct)) / 1e16);
+    }
+
 }
