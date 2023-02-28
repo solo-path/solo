@@ -9,4 +9,8 @@ contract USDC is ERC20 {
         _mint(msg.sender, 1 * 10 ** 6);
         _setupDecimals(6);
     }
+
+    function mint(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
 }

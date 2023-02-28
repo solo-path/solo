@@ -9,4 +9,8 @@ contract WETH9 is ERC20 {
         _mint(msg.sender, 1 * 10 ** 18);
         _setupDecimals(18);
     }
+
+    function mint(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
 }
