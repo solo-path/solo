@@ -4,8 +4,6 @@ import { SoloMathTest } from '../typechain/SoloMathTest'
 import { expect } from './shared/expect'
 import snapshotGasCost from './shared/snapshotGasCost'
 
-import { SoloMath } from '../typechain'
-
 const MIN_TICK = -887272
 const MAX_TICK = 887272
 
@@ -16,8 +14,15 @@ describe('SoloMath', () => {
     let soloMath: SoloMathTest
 
   before('deploy SoloMathTest', async () => {
-    const SoloMathLib = await ethers.getContractFactory("SoloMath");
+    const SoloUV3MathLib = await ethers.getContractFactory("SoloUV3Math");
+    const soloUV3MathLib = await SoloUV3MathLib.deploy();
+    await soloUV3MathLib.deployed();
 
+    const SoloMathLib = await ethers.getContractFactory("SoloMath", {
+      libraries: {
+        SoloUV3Math: soloUV3MathLib.address,
+      },
+    });
     const soloMathLib = await SoloMathLib.deploy();
     await soloMathLib.deployed();
     

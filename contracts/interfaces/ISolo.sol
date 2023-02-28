@@ -8,8 +8,8 @@ interface ISolo {
         uint256 amountDeposit,
         uint256 amountQuote,
         int24 ticksRange,
-        uint256 price,
-        address to
+        uint256 price
+        // address to
     ) external;
 
     function deposit(

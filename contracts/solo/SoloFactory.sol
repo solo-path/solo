@@ -19,7 +19,7 @@ contract SoloFactory {
         address tokenX,
         address tokenY,
         bool xIsDeposit,
-        uint24 fee,
+        uint256 fee,
         UD60x18 bMin,
         SD59x18 tPct,
         UD60x18 s,

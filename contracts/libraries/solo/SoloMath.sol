@@ -488,6 +488,57 @@ library SoloMath {
         self.blockNumber = block.number;
     }
 
+    function getSqrtPricesForMinMaxTicks(
+        address pool,
+        address depositToken,
+        address quoteToken,
+        SD59x18 tickMin_,
+        SD59x18 tickMax_
+    ) public returns (UD60x18 sqMin, UD60x18 sqMax) {
+        sqMin = getPrbSqrtRatioAtTickSimple(pool, depositToken, quoteToken, tickMin_);
+        sqMax = getPrbSqrtRatioAtTickSimple(pool, depositToken, quoteToken, tickMax_);
+    }
+
+    function firstDeposit(
+        SoloState storage self, 
+        address pool,
+        address depositToken,
+        address quoteToken,
+        uint256 amountDeposit,
+        uint256 amountQuote,
+        int24 ticksRange,
+        uint256 price
+    ) public {
+        // commenting the check for now because of stack too deep
+        /*uint256 balanceDepositToken = uint128(IERC20(depositToken).balanceOf(pool));
+        uint256 balanceQuoteToken = uint128(IERC20(quoteToken).balanceOf(pool));
+        require(balanceDepositToken == 0 && balanceQuoteToken == 0, "not empty");*/
+
+        // initialize the underlying pool 
+        uint160 sqrtPrice = _priceToSqrtX96(price, 18);
+        IUniswapV3Pool(pool).initialize(sqrtPrice);
+
+        int24 cTick_ = currentTick(pool);
+
+        self.tMin = sd(cTick_ - ticksRange);
+        self.tMax = sd(cTick_ + ticksRange);
+
+        // this check is needed, but commented out for for to reduce contract size            
+        require(self.tMin.gte(minTick()) && self.tMax.lte(maxTick()), "large range");
+
+        (self.sqrtPMin, self.sqrtPMax) = 
+            getSqrtPricesForMinMaxTicks(pool, depositToken, quoteToken, self.tMin, self.tMax);
+
+        // get users funds
+        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), amountDeposit);
+        IERC20(quoteToken).safeTransferFrom(msg.sender, address(this), amountQuote);
+
+        self.x = ud(amountDeposit);
+        self.y = ud(amountQuote);
+
+        // from here the rest of the logic resides in Solo.sol 
+    }
+
     /**
      @notice returns price at a specfic tick
      @param pool pool

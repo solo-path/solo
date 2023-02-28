@@ -51,12 +51,15 @@ contract Solo is ISolo,
     // state of the pool with all positions
     SoloMath.SoloState private app;
 
+    // place to save for debug purposes
+    SoloMath.SoloContext public ctx_;
+
     constructor(
         address uv3PoolFactory_,
         address tokenA_,
         address tokenB_,
         bool tokenAIsDeposit_,
-        uint24 fee_,
+        uint256 fee_,
         string memory lpName,
         string memory lpSymbol
     )
@@ -78,6 +81,7 @@ contract Solo is ISolo,
 
         token0 = tokenAIsToken0 ? tokenA_ : tokenB_;
         token1 = tokenAIsToken0 ? tokenB_ : tokenA_;
+        fee = ud(fee_);
     }
 
     function init(
@@ -100,8 +104,8 @@ contract Solo is ISolo,
         uint256 amountDeposit,
         uint256 amountQuote,
         int24 ticksRange,
-        uint256 price,
-        address to
+        uint256 price
+        // address to
     ) external override {
         // require that the pool has no money
         // nothing to protected position
@@ -110,35 +114,30 @@ contract Solo is ISolo,
         // Same formulation as regular deposit. (to calculate LPs)
         // Set the price in Uv3 pool.
 
-        uint256 balanceToken0 = uint128(ERC20(token0).balanceOf(pool));
-        uint256 balanceToken1 = uint128(ERC20(token1).balanceOf(pool));
-        require(balanceToken0 == 0 && balanceToken1 == 0, "not empty");
+        app.firstDeposit(
+            pool,
+            depositToken(),
+            quoteToken(),
+            amountDeposit,
+            amountQuote,
+            ticksRange,
+            price
+        );
 
-        // initialize the underlying pool 
-        uint160 sqrtPrice = uint160(UD60x18.unwrap(ud(price).sqrt()));
-        IUniswapV3Pool(pool).initialize(sqrtPrice);
-
-        // tC is calculated here
         SoloMath.SoloContext memory ctx = getContext();
-
-        app.tMin = ctx.tC.sub(sd(ticksRange));
-        app.tMax = ctx.tC.add(sd(ticksRange));
-
-        // this check is needed, but commented out for for to reduce contract size            
-        require(app.tMin.gte(SoloMath.minTick()) && app.tMax.lte(SoloMath.maxTick()), "large range");
-
-        // get users funds
-        ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
-        ERC20(quoteToken()).safeTransferFrom(msg.sender, address(this), amountQuote);
-
-        app.x = ud(amountDeposit);
-        app.y = ud(amountQuote);
 
         // set proper fX and fY (so some amount if set aside for cX and cY)
         (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
 
         // set the Flex position
         putFlexPosition(ctx);
+        int24 tickLower = int24(SD59x18.unwrap(app.tMin));
+        int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
+
+        // debugging here
+        // putFlexPositionOldWay(tickLower, tickUpper, amountDeposit, amountQuote);
+        // ctx_ = ctx;
+        // end of debugging
 
         UD60x18 valueOfDeposit = ud(amountQuote).add(ud(amountDeposit).mul(ud(price)));
 
@@ -614,6 +613,7 @@ contract Solo is ISolo,
      */
     function flexPosition() public view returns 
     (uint256 amountDeposit, uint256 amountQuote) {
+        // TODO /1000, *1000 - temporary patch until the math is fixed on lower levels
         int24 tickMin = tMin();
         int24 tickMax = tMax();
         (uint128 liquidity, , ) = _flexPosition(tickMin, tickMax);
@@ -621,10 +621,10 @@ contract Solo is ISolo,
             SoloMath.getSqrtRatioAtTick(currentTick()),
             SoloMath.getSqrtRatioAtTick(tickMin),
             SoloMath.getSqrtRatioAtTick(tickMax),
-            liquidity
+            liquidity / 1000
         );
-        amountDeposit = (token0IsDeposit) ? amount0 : amount1;
-        amountQuote = (token0IsDeposit) ? amount1 : amount0;
+        amountDeposit = (token0IsDeposit) ? amount0 * 1000: amount1 * 1000;
+        amountQuote = (token0IsDeposit) ? amount1 * 1000 : amount0 * 1000;
     }
 
     function tMin() public view returns (int24 tick) {
@@ -633,6 +633,51 @@ contract Solo is ISolo,
 
     function tMax() public view returns (int24 tick) {
         tick = int24(SD59x18.unwrap(app.tMax));
+    }
+
+    /**
+     @notice Lookup function for debug purposes. 
+     @return app_
+     */
+    function lookupState() public view returns (SoloMath.SoloState memory app_) {
+        app_ = app;
+    }
+
+    /**
+     @notice General lookup function for debug purposes. 
+     @return ctx
+     */
+    function lookupContext() public view returns (SoloMath.SoloContext memory ctx,
+        uint256 spot_,
+        int24 cTick_,
+        int24 tickMin,
+        int24 tickMax,
+        uint160 sMin,
+        uint160 sMax,
+        uint128 liquidity,
+        uint256 t0,
+        uint256 t1) {
+        tickMin = tMin();
+        tickMax = tMax();
+        ctx = getContext();
+        spot_ = pool.spot(
+                depositToken(),
+                quoteToken(),
+                1
+            );
+        cTick_ = currentTick();
+        sMin = uint160(UD60x18.unwrap(app.sqrtPMin));
+        sMax = uint160(UD60x18.unwrap(app.sqrtPMax));
+        (liquidity, ,) = _flexPosition(tickMin, tickMax);
+        //(t0, t1,,) = flexPosition();
+        t0 = SoloMath.getSqrtRatioAtTick(currentTick());
+        t1 = SoloMath.getSqrtRatioAtTick(tickMax);
+        /*(t0, t1) = SoloUV3Math.getAmountsForLiquidity(
+            SoloMath.getSqrtRatioAtTick(currentTick()),
+            SoloMath.getSqrtRatioAtTick(tickMin-1000),
+            SoloMath.getSqrtRatioAtTick(tickMax),
+            liquidity / 1000
+        );*/
     }
 
     /**
