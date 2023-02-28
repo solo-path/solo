@@ -14,6 +14,11 @@ To deploy uniswap system run
 yarn deploy -pk [private-key] -j [json-rpc] -w9 [network token] -ncl [network token symbol] -o [owner address of uniswap contracts]
 ```
 
+Mumbai deploy command
+```
+yarn deploy -pk [private-key] -j [json-rpc] -w9 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889 -ncl MATIC -o [owner address of uniswap contracts]
+```
+
 create a `.env` file from the `.env.sample`
 
 To verify look at the `state.json`
