@@ -674,6 +674,30 @@ library SoloMath {
     }
 
     /**
+     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using spot price
+     @param tokenIn token the input amount is in
+     @param tokenOut token for the output amount
+     @param amountIn amount in _tokenIn
+     @return amountOut equivalent anount in _tokenOut
+     */
+    function spot(
+        address pool,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) public view returns (uint160 amountOut) { 
+        return
+            (
+                _uint160Safe(SoloUV3Math.getQuoteAtTick(
+                    currentTick(pool),
+                    SoloUV3Math.toUint128(amountIn),
+                    tokenIn,
+                    tokenOut
+                ))
+            );
+    } 
+
+    /**
      @notice returns equivalent _tokenOut for _amountIn, _tokenIn using TWAP price
      @param _twapPeriod the averaging time period
      @param _amountIn amount in _tokenIn

@@ -157,7 +157,7 @@ contract Solo is ISolo,
 
         // TODO add check for totalSupply > 0. This should never be the case, because firstDeposit must come in first
 
-        UD60x18 spotPrice = ud(spot(depositToken(), quoteToken(), ONE));
+        UD60x18 spotPrice = ud(pool.spot(depositToken(), quoteToken(), ONE));
         UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
@@ -349,7 +349,7 @@ contract Solo is ISolo,
         The flow will also produce the exact amount of output tokens (FOx or FOy) from the partial trade.
         */
 
-        ts.concentratedSwapPrice = ((spot(depositToken(), quoteToken(), ONE)))._uint160Safe();
+        ts.concentratedSwapPrice = ((pool.spot(depositToken(), quoteToken(), ONE)))._uint160Safe();
 
         // Step 7
         // Formula 4.30
@@ -610,31 +610,27 @@ contract Solo is ISolo,
      @return amountDeposit The amount of deposit tokens in the flex position liquidity. 
      @return amountQuote The amount of quote tokens  in the flex position liquidity. 
      */
-    function flexPosition() public view returns (uint256 amountDeposit, uint256 amountQuote) {
-        int24 tickMin = int24(SD59x18.unwrap(app.tMin));
-        int24 tickMax = int24(SD59x18.unwrap(app.tMax));
+    function flexPosition() public view returns 
+    (uint256 amountDeposit, uint256 amountQuote) {
+        int24 tickMin = tMin();
+        int24 tickMax = tMax();
+        (uint128 liquidity, , ) = _flexPosition(tickMin, tickMax);
         (uint256 amount0, uint256 amount1) = SoloUV3Math.getAmountsForLiquidity(
-            spot(
-                depositToken(),
-                quoteToken(),
-                1
-            ),
+            SoloMath.getSqrtRatioAtTick(currentTick()),
             SoloMath.getSqrtRatioAtTick(tickMin),
             SoloMath.getSqrtRatioAtTick(tickMax),
-            (ERC20(pool).balanceOf(address(this)))._uint128Safe()
+            liquidity
         );
         amountDeposit = (token0IsDeposit) ? amount0 : amount1;
         amountQuote = (token0IsDeposit) ? amount1 : amount0;
     }
 
-    /**
-     @notice Returns current price tick
-     @param tick Uniswap pool's current price tick
-     */
-    function currentTick(address pool) public view returns (int24 tick) {
-        (, int24 tick_, , , , , bool unlocked_) = IUniswapV3Pool(pool).slot0();
-        require(unlocked_, "IV.currentTick: the pool is locked");
-        tick = tick_;
+    function tMin() public view returns (int24 tick) {
+        tick = int24(SD59x18.unwrap(app.tMin));
+    }
+
+    function tMax() public view returns (int24 tick) {
+        tick = int24(SD59x18.unwrap(app.tMax));
     }
 
     /**
@@ -675,29 +671,6 @@ contract Solo is ISolo,
         (liquidity, , , tokensOwed0, tokensOwed1) = IUniswapV3Pool(pool)
             .positions(positionKey);
     }
-
-    /**
-     @notice returns equivalent _tokenOut for _amountIn, _tokenIn using spot price
-     @param tokenIn token the input amount is in
-     @param tokenOut token for the output amount
-     @param amountIn amount in _tokenIn
-     @return amountOut equivalent anount in _tokenOut
-     */
-    function spot(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) public view returns (uint160 amountOut) { 
-        return
-            (
-                SoloUV3Math.getQuoteAtTick(
-                    currentTick(),
-                    SoloUV3Math.toUint128(amountIn),
-                    tokenIn,
-                    tokenOut
-                )
-            )._uint128Safe();
-    } 
 
     function uniswapV3MintCallback(
         uint256 amount0,
