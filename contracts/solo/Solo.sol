@@ -539,15 +539,17 @@ contract Solo is ISolo,
         
         UD60x18 uninitialized;
 
-        (uint160 sqrtP, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        int24 cTick_ = currentTick();
+        uint256 sqPrice_ = SoloMath.getSqrtRatioAtTickSimple(pool, depositToken(), quoteToken(), cTick_);
+
 
         context = SoloMath.SoloContext({
             cX: uninitialized,
             cY: uninitialized,
             fX: uninitialized,
             fY: uninitialized,
-            sqrtP: ud(uint256(sqrtP)),
-            tC: sd(pool.currentTick())
+            sqrtP: ud(sqPrice_),
+            tC: sd(cTick_)
         });
     }
 

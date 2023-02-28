@@ -488,8 +488,85 @@ library SoloMath {
         self.blockNumber = block.number;
     }
 
+    /**
+     @notice returns price at a specfic tick
+     @param pool pool
+     @param depositToken_ depositToken
+     @param quoteToken_ quoteToken
+     @param tick_ tick
+     @return price price
+     */
+    function tickToPrice(
+        address pool,
+        address depositToken_,
+        address quoteToken_,
+        int24 tick_
+    ) public view returns (uint256 price) {
+        return
+            SoloUV3Math.getQuoteAtTick(
+                tick_, 
+                uint128(1e18),
+                depositToken_,
+                quoteToken_
+            );
+    }
+
     function getSqrtRatioAtTick(int24 tickMin) public pure returns (uint160 sqrtRatio) {
         sqrtRatio = SoloTickMath.getSqrtRatioAtTick(tickMin);
+    }
+
+    function getSqrtRatioAtTickSimple(
+        address pool,
+        address depositToken_,
+        address quoteToken_,
+        int24 tick_
+    ) public view returns (uint160 sqrtRatio) {
+        uint256 price = tickToPrice(pool, depositToken_, quoteToken_, tick_);
+
+        sqrtRatio = uint160(sqrtSimple(price * 1e18));
+    }
+
+    function getPrbSqrtRatioAtTickSimple(
+        address pool,
+        address depositToken_,
+        address quoteToken_,
+        SD59x18 tick
+    ) public view returns (UD60x18 sqrtRatio) {
+        int24 tick_ = int24(SD59x18.unwrap(tick));
+        sqrtRatio = ud(getSqrtRatioAtTickSimple(pool, depositToken_, quoteToken_, tick_));
+    }
+
+    /// Converts a price into a sqrtX96
+    /// @param _price The price to use
+    /// @param _decimals price token decimals
+    /// @return sqrtX96 The computed tick corresponding to that price
+    function _priceToSqrtX96(uint256 _price, uint256 _decimals) public pure returns (uint160 sqrtX96) {
+        if (_price < 10 ** _decimals) {
+            return toSqrtX96_lower(_price, _decimals);
+        } else {
+            return toSqrtX96(_price, _decimals);
+        }
+    }
+
+    function toSqrtX96(uint256 _x, uint256 _decimals) public pure returns (uint160) {
+        return uint160(sqrtSimple(_x) * 2 ** 96 / sqrtSimple(10 ** _decimals));
+    }
+
+    function toSqrtX96_lower(uint256 _x, uint256 _decimals) public pure returns (uint160) {
+        return uint160(sqrtSimple((_x << (96 * 2)) / (10 ** _decimals)));
+    }
+
+    function sqrtSimple(uint256 y) public pure returns (uint256 z) {
+        if (y > 3) {
+            z = y;
+            uint256 x = y / 2 + 1;
+            while (x < z) {
+                z = x;
+                x = (y / x + x) / 2;
+            }
+        } else if (y != 0) {
+            z = 1;
+        }
     }
 
     /**
