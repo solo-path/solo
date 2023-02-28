@@ -144,6 +144,8 @@ contract Solo is ISolo,
 
         UD60x18 valueOfDeposit = ud(amountQuote).add(ud(amountDeposit).mul(ud(price)));
 
+        app.updatePf(ud(price));
+
         _mint(msg.sender, uint256(UD60x18.unwrap(valueOfDeposit)));
     }
 
@@ -163,50 +165,56 @@ contract Solo is ISolo,
         UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
-        app.updatePf(spotPrice);
-
         UD60x18 percent5 = ud(FIVE).div(ud(HUNDRED));
         UD60x18 toProtected = dPct.mul(ud(amountDeposit));
+        UD60x18 toMain = ud(amountDeposit).sub(toProtected);
 
         // if the difference between the spot price and the 15 minute TWAP is more than 5%
-        if(ud(pool.spot(depositToken(), quoteToken(), ONE)).div(
+
+        /*if(ud(pool.spot(depositToken(), quoteToken(), ONE)).div(
             ud(pool.twap(depositToken(), quoteToken(), FIFTEEN_MINUTES, ONE))).gt(percent5)) {
             revert ("v");
-        }
+        }*/
 
         // or the price change in the block is more than twice the trading fee
-        if(offeredPrice.div(app.pf). gt(fee.mul(SoloMath.two()))) {
+
+        UD60x18 delta = (offeredPrice.gt(app.pf)) ? offeredPrice.sub(app.pf) : app.pf.sub(offeredPrice);
+        if(delta.div(app.pf).gt(fee.mul(SoloMath.two()))) {
             revert ("m");
         }
 
-        ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
-
-        if (token0IsDeposit) {
-            app.protected0 = app.protected0 + UD60x18.unwrap(toProtected);
-        } else {
-            app.protected1 = app.protected1 + UD60x18.unwrap(toProtected);
-        }
- 
         UD60x18 valueOfDeposit = offeredPrice.mul(ud(amountDeposit));
         UD60x18 valueIncreasePercent = 
             valueOfDeposit.div(
-                ud(capitalAsQuoteTokens(UD60x18.unwrap(SoloMath.max(spotPrice, twapPrice)))).add(valueOfDeposit)
+                ud(capitalAsQuoteTokens(UD60x18.unwrap(SoloMath.max(spotPrice, twapPrice))))
             );
  
+        // change app.protected after getting the tvl calculated
+        if (token0IsDeposit) {
+            app.protected0 = app.protected0 + UD60x18.unwrap(toProtected);
+            app.x = app.x.add(toMain);
+        } else {
+            app.protected1 = app.protected1 + UD60x18.unwrap(toProtected);
+            app.y = app.y.add(toMain);
+        }
+ 
+        // move deposits after capitalAsQuoteTokens is calculated
+        ERC20(depositToken()).safeTransferFrom(msg.sender, address(this), amountDeposit);
+
         UD60x18 lpAmount = ud(totalSupply()).mul(valueIncreasePercent);
         lpTokens = UD60x18.unwrap(lpAmount);
         _mint(to, lpTokens);
 
         // The allocation of tokens between the Flex position and the Concentrated position is reassessed after deposits 
-        // and before trades.
-        if(bMin.lt(ud(block.number - app.blockNumber))) {
+        // and before trades.  
+        if(bMin.lt(ud((block.number - app.blockNumber) * 1e18))) {
             SoloMath.SoloContext memory ctx = getContext();            
             (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
             pullFlexPosition();
             putFlexPosition(ctx);
         }
 
-        // TODO increase app.x and app.y ??
+        app.updatePf(spotPrice);
     }
 
     /**
@@ -518,9 +526,13 @@ contract Solo is ISolo,
     }
 
     function pullFlexPosition() internal returns (uint256 amount0, uint256 amount1) {
+        (uint128 liquidity, , ) = _flexPosition(
+            int24(SD59x18.unwrap(app.tMin)),
+            int24(SD59x18.unwrap(app.tMax))
+        );
         (amount0, amount1) = SoloMath._burnLiquidity(
             pool,
-            uint128(ERC20(pool).balanceOf(address(this))),
+            liquidity,
             int24(SD59x18.unwrap(app.tMin)),
             int24(SD59x18.unwrap(app.tMax)),
             address(this),
