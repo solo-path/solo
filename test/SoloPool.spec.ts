@@ -109,18 +109,14 @@ describe('SoloPool', () => {
 
       // P - 1000/0, C - 1800/800, F - 200/200
       let res = await soloPool.protectedPosition();
-      // nothing in protected position
       expect(res.amount0).to.equal(ONE.mul(1000));
       expect(res.amount1).to.equal(ZERO);
       //console.log(res);
       res = await soloPool.concentratedPosition();
-      // 20% taken for flex position
       expect(res.amount0.div(OFF3).toNumber()).to.be.closeTo(1800000,1);
       expect(res.amount1.div(OFF3).toNumber()).to.be.closeTo(800000,1);
       //console.log(res);
-      
       let fres = await soloPool.flexPosition();
-      //20% taken for flex position
       expect(fres.amountDeposit.div(OFF3).toNumber()).to.be.closeTo(200000,1);
       expect(fres.amountQuote.div(OFF3).toNumber()).to.be.closeTo(200000,1);
       //console.log(fres);
@@ -128,8 +124,56 @@ describe('SoloPool', () => {
       //let cres = await soloPool.lookupContext();
       //console.log(cres);
 
-      //let ares = await soloPool.lookupState();
-      //console.log(ares);
+      let ares = await soloPool.lookupState();
+      expect(ares.x).to.equal(ONE.mul(2000));
+      expect(ares.y).to.equal(ONE.mul(1000));
+    });
+
+    it('withdraw', async () => {
+      let start_balance = await soloPool.balanceOf(wallet.address)
+      console.log(start_balance.toString());
+      expect(start_balance).to.equal(ONE.mul(4000));
+
+      // P - 1000/0, C - 1800/800, F - 200/200
+
+      //let res = await soloPool.concentratedPosition();
+      //console.log(res);
+
+      let usdc_balance_start = await usdc.balanceOf(wallet.address)
+      let weth_balance_start = await weth.balanceOf(wallet.address)
+
+      await soloPool.withdraw(ONE.mul(1000), wallet.address);
+
+      let end_balance = await soloPool.balanceOf(wallet.address)
+      console.log(end_balance.toString());
+      expect(end_balance).to.equal(ONE.mul(3000));
+
+      // P - 750/0, C - 1350/600, F - 150/150
+
+      let res = await soloPool.protectedPosition();
+      expect(res.amount0).to.equal(ONE.mul(750));
+      expect(res.amount1).to.equal(ZERO);
+      //console.log(res);
+      res = await soloPool.concentratedPosition();
+      expect(res.amount0.div(OFF3).toNumber()).to.be.closeTo(1350000,1);
+      expect(res.amount1.div(OFF3).toNumber()).to.be.closeTo(600000,1);
+      //console.log(res);
+      let fres = await soloPool.flexPosition();
+      expect(fres.amountDeposit.div(OFF3).toNumber()).to.be.closeTo(150000,1);
+      expect(fres.amountQuote.div(OFF3).toNumber()).to.be.closeTo(150000,1);
+      //console.log(fres);
+
+      //let cres = await soloPool.lookupContext();
+      //console.log(cres);
+
+      let ares = await soloPool.lookupState();
+      expect(ares.x.div(OFF3).toNumber()).to.be.closeTo(1500000,1);
+      expect(ares.y.div(OFF3).toNumber()).to.be.closeTo(750000,1);
+
+      let usdc_balance_end = await usdc.balanceOf(wallet.address)
+      let weth_balance_end = await weth.balanceOf(wallet.address)
+      expect(usdc_balance_end.sub(usdc_balance_start).div(OFF3).toNumber()).to.be.closeTo(750000,1);
+      expect(weth_balance_end.sub(weth_balance_start).div(OFF3).toNumber()).to.be.closeTo(250000,1);
     });
 
   });

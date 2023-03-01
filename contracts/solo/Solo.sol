@@ -217,23 +217,55 @@ contract Solo is ISolo,
         app.updatePf(spotPrice);
     }
 
+    function reducePositions(uint256 lpAmount) internal 
+        returns (uint256 amountDeposit, uint256 amountQuote) 
+    {
+        uint256 lpSupply = totalSupply();
+
+        (uint256 protected0, uint256 protected1) = protectedPosition();
+        (uint256 concentrated0, uint256 concentrated1) = concentratedPosition();
+
+        uint256 amt_p0 = lpAmount * protected0 / lpSupply;
+        uint256 amt_p1 = lpAmount * protected1 / lpSupply;
+        uint256 amt_c0 = lpAmount * concentrated0 / lpSupply;
+        uint256 amt_c1 = lpAmount * concentrated1 / lpSupply;
+
+        app.protected0 -= amt_p0;
+        app.protected1 -= amt_p1;
+
+        if (token0IsDeposit) {
+            amountDeposit += amt_p0 + amt_c0;
+            amountQuote += amt_p1 + amt_c1;
+            app.x = app.x.sub(ud(amt_c0));
+            app.y = app.y.sub(ud(amt_c1));
+        } else {
+            amountDeposit += amt_p1 + amt_c1;
+            amountQuote += amt_p0 + amt_c0;
+            app.x = app.x.sub(ud(amt_c1));
+            app.y = app.y.sub(ud(amt_c0));
+        }
+    }
+
     /**
+     @notice 3.8  Liquidity Removal
+        A user may redeem their pool tokens for both quote and deposit assets at the current mix in the pool
+        without experiencing slippage.  Upon redemption, the number of protected tokens is adjusted in the same 
+        proportion as the overall LP tokens.
      @param lpAmount Number of liquidity tokens to redeem as pool assets
      @param to Address to which redeemed pool assets are sent
      @return amountDeposit Amount of deposit tokens redeemed by the submitted liquidity tokens
      @return amountQuote Amount of quote tokens redeemed by the submitted liquidity tokens
      */
 
-    function withdraw(
-        uint256 lpAmount, 
-        address to
-    ) external override nonReentrant returns (uint256 amountDeposit, uint256 amountQuote) {
+    function withdraw(uint256 lpAmount, address to) external override nonReentrant 
+        returns (uint256 amountDeposit, uint256 amountQuote) {
         app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
 
-        transferFrom(msg.sender, address(this), lpAmount);
-        _burn(address(this), lpAmount);
+        //transferFrom(msg.sender, address(this), lpAmount);
 
-        uint256 lpSupply = totalSupply();
+        // Withdraw ratio amount of protected and concentrated
+        // must be done before flex position is burned
+        (amountDeposit, amountQuote) = reducePositions(lpAmount);
 
         // Withdraw ratio amount of liquidity
 
@@ -248,27 +280,24 @@ contract Solo is ISolo,
             address(this), 
             false);
 
-        amountDeposit = (token0IsDeposit) ? amount0 : amount1;
-        amountQuote = (token0IsDeposit) ? amount1 : amount0;
-
-        // Withdraw ratio amount of protected and concentrated
-
-        (uint256 protected0, uint256 protected1) = protectedPosition();
-        (uint256 concentrated0, uint256 concentrated1) = concentratedPosition();
-
         if (token0IsDeposit) {
-            amountDeposit += lpAmount * protected0 / lpSupply;
-            amountDeposit += lpAmount * concentrated0 / lpSupply;
+            amountDeposit += amount0;
+            amountQuote += amount1;
+            app.x = app.x.sub(ud(amount0));
+            app.y = app.y.sub(ud(amount1));
         } else {
-            amountDeposit += lpAmount * protected1 / lpSupply;
-            amountDeposit += lpAmount * concentrated1 / lpSupply;
+            amountDeposit += amount1;
+            amountQuote += amount0;
+            app.x = app.x.sub(ud(amount1));
+            app.y = app.y.sub(ud(amount0));
         }
+
+        // burn after _burnLiquidity, because totalSupply is used in there
+        _burn(msg.sender, lpAmount);
 
         // send sums to user
         ERC20(depositToken()).safeTransfer(to, amountDeposit);
         ERC20(quoteToken()).safeTransfer(to, amountQuote);
-
-        // TODO reduce app.x and app.y ??
     }
 
     function swapExactInput(
