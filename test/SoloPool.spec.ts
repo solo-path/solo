@@ -80,6 +80,7 @@ describe('SoloPool', () => {
   describe('liquidity provider', () => {
     const [wallet, alice, bob, carol, other,
       user0, user1, user2, user3, user4] = waffle.provider.getWallets()
+    const walletSigner = waffle.provider.getSigner(wallet.address);
 
     async function mineNBlocks(n: number) {
       for (let index = 0; index < n; index++) {
@@ -101,7 +102,7 @@ describe('SoloPool', () => {
       //console.log(cres);
 
       await usdc.approve(soloPool.address, ONE.mul(2000));
-      await soloPool.deposit(ONE.mul(2000), wallet.address);
+      await soloPool.connect(wallet).deposit(ONE.mul(2000), wallet.address);
 
       let end_balance = await soloPool.balanceOf(wallet.address)
       console.log(end_balance.toString());
