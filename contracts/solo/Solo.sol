@@ -55,7 +55,8 @@ contract Solo is ISolo,
     SoloMath.SoloState private app;
 
     // place to save for debug purposes
-    SoloMath.SoloContext public ctx_;
+    //SoloMath.SoloContext public ctx_;
+    SoloMath.TradeStateDebug public ts_;
 
     constructor(
         address uv3PoolFactory_,
@@ -308,8 +309,6 @@ contract Solo is ISolo,
 
         if (amount0 * amount1 != 0) revert ( "a" );
 
-        app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
-
         SoloMath.SoloContext memory ctx = getContext();
         SoloMath.TradeState memory ts;
         SoloMath.TradeReq memory t = SoloMath.TradeReq({
@@ -331,8 +330,8 @@ contract Solo is ISolo,
 
         // Transfer funds in
         amount0 > 0 ? 
-            ERC20(token0).safeTransferFrom(_msgSender(), address(this), amount0) :
-            ERC20(token1).safeTransferFrom(_msgSender(), address(this), amount1);
+            ERC20(token0).safeTransferFrom(msg.sender, address(this), amount0) :
+            ERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
         
         // if(amount0 == 0 && amount1 == 0) revert("not possible?")
 
@@ -357,24 +356,29 @@ contract Solo is ISolo,
             ctx
         );
 
+        app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
+
         if (ts.resetsConcentratedPosition) {
             // ... all swap to flex position (amountX, amountY) execute reset, exit
+            // note that the token purchased comes out as negative number
             (ts.fox, ts.foy) = IUniswapV3Pool(pool).swap(
                 address(this),
                 ts.xForY,
-                (ts.xForY) ? int256(amount0) : int256(amount1),
+                (ts.xForY) ? int256(UD60x18.unwrap(ts.fax)) : int256(UD60x18.unwrap(ts.fay)),
                 (ts.xForY) ? 
                       SoloUV3Math.MIN_SQRT_RATIO + 1
                     : SoloUV3Math.MAX_SQRT_RATIO - 1,
                 abi.encode(address(this))
             );
             app.resetConcentratedPosition();
+
             if(ts.xForY) {
-                ERC20(token1).transfer(msg.sender, uint256(ts.foy));
+                ERC20(token1).transfer(msg.sender, uint256(-ts.foy));
             } else {
-                ERC20(token0).transfer(msg.sender, uint256(ts.fox));
+                ERC20(token0).transfer(msg.sender, uint256(-ts.fox));
             }
-            return (uint256(ts.fox), uint256(ts.foy));
+            
+            return (uint256(-ts.fox), uint256(-ts.foy));
         }
 
         /*
@@ -383,6 +387,10 @@ contract Solo is ISolo,
        
         // One of these will be positive and exact - amount tokens received.
 
+        // review: Likely directional confusion here. 
+        // review: Consider exact amount in and no concern about slippage.
+
+        // note that the token purchased comes out as negative number
         (ts.fox, ts.foy) = IUniswapV3Pool(pool).swap(
             address(this),
             ts.xForY,
@@ -409,15 +417,15 @@ contract Solo is ISolo,
             // Formula 4.29
             ts.coy = ts.cax.mul(spotXForY);
             // Formula 4.30
-            ts.oy = SoloMath.min(ud(uint256(ts.foy)).add(ts.coy), ts.acy);
+            ts.oy = SoloMath.min(ts.coy, ts.acy).add(ud(uint256(-ts.foy)));
             // oy + foy to trader
             ERC20(token1).safeTransfer(msg.sender, UD60x18.unwrap(ts.oy)); // Y is token1
         } else {
             UD60x18 spotYForX = SoloMath.one().div(ud(ts.concentratedSwapPrice));
             // Formula 4.29
-            ts.cox = ts.cax.div(spotYForX);
+            ts.cox = ts.cay.div(spotYForX);
             // Formula 4.30
-            ts.ox = SoloMath.min(ud(uint256(ts.fox)).add(ts.cox), ts.acx);
+            ts.ox = SoloMath.min(ts.cox, ts.acx).add(ud(uint256(-ts.fox)));
             // ox + fox to trader
             ERC20(token0).safeTransfer(msg.sender, UD60x18.unwrap(ts.ox)); // X is token0
         }
@@ -429,7 +437,7 @@ contract Solo is ISolo,
         SoloMath.TradeState memory ts,
         SoloMath.TradeReq memory t,
         SoloMath.SoloContext memory ctx
-    ) internal view returns (SoloMath.TradeState memory) {
+    ) internal returns (SoloMath.TradeState memory) {
         SoloMath.ScratchPad memory s_;
 
         (ts, s_) = SoloMath.step1(
@@ -457,18 +465,21 @@ contract Solo is ISolo,
             s_
         );
 
-        (ts, s_) = SoloMath.step4(
-            app,
-            ts,
-            s_,
-            t   
-        );
+        if (!ts.resetsConcentratedPosition) {            
+            // if we need to reset the concentrated position, then the rest of the steps must be skipped
+            (ts, s_) = SoloMath.step4(
+                app,
+                ts,
+                s_,
+                t   
+            );
 
-        (ts, s_) = SoloMath.step5(
-            ctx,
-            ts,
-            s_
-        );
+            (ts, s_) = SoloMath.step5(
+                ctx,
+                ts,
+                s_
+            );
+        }
 
         return (ts);
     }

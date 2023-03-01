@@ -84,6 +84,17 @@ library SoloMath {
         bool resetsConcentratedPosition;
     }
 
+    struct TradeStateDebug {
+        UD60x18 vpx;
+        UD60x18 vpy;
+        int256 vx;
+        int256 vy;
+        uint256 uint_v;
+        uint256 uint_z;
+        bool xForY;
+        bool b2;
+    }
+
     struct TradeReq {
         UD60x18 rax;
         UD60x18 ray;
