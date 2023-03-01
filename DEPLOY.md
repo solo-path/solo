@@ -1,13 +1,11 @@
-To deploy uniswap system run
+# SOLO Deploy
+
+## uniswap deploy
+see the v3-deploy branch
+
+## solo deploy
+Update the `deploy/deploySoloFactory.ts` to have the correct uniswapV3Factory address
 
 ```
-yarn deploy -pk [private-key] -j [json-rpc] -w9 [network token] -ncl [network token symbol] -o [owner address of uniswap contracts]
-```
-
-create a `.env` file from the `.env.sample`
-
-To verify look at the `state.json`
-run this command for every contract in there
-```
-npx hardhat verify --newtwork [network name] [contract address]
+npx hardhat deploy --tags SoloFactory --network mumbai 
 ```
