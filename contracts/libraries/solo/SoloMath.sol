@@ -85,12 +85,13 @@ library SoloMath {
     }
 
     struct TradeStateDebug {
-        UD60x18 vpx;
-        UD60x18 vpy;
-        int256 vx;
-        int256 vy;
-        uint256 uint_v;
-        uint256 uint_z;
+        UD60x18 px;
+        UD60x18 py;
+        int256 ix;
+        int256 iy;
+        int256 cTick;
+        uint256 ux;
+        uint256 uy;
         bool xForY;
         bool b2;
     }
@@ -508,14 +509,13 @@ library SoloMath {
     }
 
     function getSqrtPricesForMinMaxTicks(
-        address pool,
         address depositToken,
         address quoteToken,
         SD59x18 tickMin_,
         SD59x18 tickMax_
-    ) public returns (UD60x18 sqMin, UD60x18 sqMax) {
-        sqMin = getPrbSqrtRatioAtTickSimple(pool, depositToken, quoteToken, tickMin_);
-        sqMax = getPrbSqrtRatioAtTickSimple(pool, depositToken, quoteToken, tickMax_);
+    ) public pure returns (UD60x18 sqMin, UD60x18 sqMax) {
+        sqMin = getPrbSqrtRatioAtTickSimple(depositToken, quoteToken, tickMin_);
+        sqMax = getPrbSqrtRatioAtTickSimple(depositToken, quoteToken, tickMax_);
     }
 
     function firstDeposit(
@@ -546,7 +546,7 @@ library SoloMath {
         require(self.tMin.gte(minTick()) && self.tMax.lte(maxTick()), "large range");
 
         (self.sqrtPMin, self.sqrtPMax) = 
-            getSqrtPricesForMinMaxTicks(pool, depositToken, quoteToken, self.tMin, self.tMax);
+            getSqrtPricesForMinMaxTicks(depositToken, quoteToken, self.tMin, self.tMax);
 
         // get users funds
         IERC20(depositToken).safeTransferFrom(msg.sender, address(this), amountDeposit);
@@ -560,18 +560,16 @@ library SoloMath {
 
     /**
      @notice returns price at a specfic tick
-     @param pool pool
      @param depositToken_ depositToken
      @param quoteToken_ quoteToken
      @param tick_ tick
      @return price price
      */
     function tickToPrice(
-        address pool,
         address depositToken_,
         address quoteToken_,
         int24 tick_
-    ) public view returns (uint256 price) {
+    ) public pure returns (uint256 price) {
         return
             SoloUV3Math.getQuoteAtTick(
                 tick_, 
@@ -586,24 +584,22 @@ library SoloMath {
     }
 
     function getSqrtRatioAtTickSimple(
-        address pool,
         address depositToken_,
         address quoteToken_,
         int24 tick_
-    ) public view returns (uint160 sqrtRatio) {
-        uint256 price = tickToPrice(pool, depositToken_, quoteToken_, tick_);
+    ) public pure returns (uint160 sqrtRatio) {
+        uint256 price = tickToPrice(depositToken_, quoteToken_, tick_);
 
         sqrtRatio = uint160(sqrtSimple(price * 1e18));
     }
 
     function getPrbSqrtRatioAtTickSimple(
-        address pool,
         address depositToken_,
         address quoteToken_,
         SD59x18 tick
-    ) public view returns (UD60x18 sqrtRatio) {
+    ) public pure returns (UD60x18 sqrtRatio) {
         int24 tick_ = int24(SD59x18.unwrap(tick));
-        sqrtRatio = ud(getSqrtRatioAtTickSimple(pool, depositToken_, quoteToken_, tick_));
+        sqrtRatio = ud(getSqrtRatioAtTickSimple(depositToken_, quoteToken_, tick_));
     }
 
     /// Converts a price into a sqrtX96

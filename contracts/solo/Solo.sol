@@ -135,12 +135,11 @@ contract Solo is ISolo,
 
         // set the Flex position
         putFlexPosition(ctx);
-        int24 tickLower = int24(SD59x18.unwrap(app.tMin));
-        int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
 
         // debugging here
+        // int24 tickLower = int24(SD59x18.unwrap(app.tMin));
+        // int24 tickUpper = int24(SD59x18.unwrap(app.tMax));
         // putFlexPositionOldWay(tickLower, tickUpper, amountDeposit, amountQuote);
-        // ctx_ = ctx;
         // end of debugging
 
         UD60x18 valueOfDeposit = ud(amountQuote).add(ud(amountDeposit).mul(ud(price)));
@@ -166,7 +165,7 @@ contract Solo is ISolo,
         UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
-        UD60x18 percent5 = ud(FIVE).div(ud(HUNDRED));
+        //UD60x18 percent5 = ud(FIVE).div(ud(HUNDRED));
         UD60x18 toProtected = dPct.mul(ud(amountDeposit));
         UD60x18 toMain = ud(amountDeposit).sub(toProtected);
 
@@ -374,11 +373,23 @@ contract Solo is ISolo,
 
             if(ts.xForY) {
                 ERC20(token1).transfer(msg.sender, uint256(-ts.foy));
+
+                // update app.x and app.y after a trade
+                // take full amount in, subtract tokens given out
+                app.x = app.x.add(t.rax);
+                app.y = app.y.sub(ud(uint256(-ts.foy)));
+
+                return (uint256(ts.fox), uint256(-ts.foy));
             } else {
                 ERC20(token0).transfer(msg.sender, uint256(-ts.fox));
+
+                // update app.x and app.y after a trade
+                // take full amount in, subtract tokens given out
+                app.x = app.x.sub(ud(uint256(-ts.fox)));
+                app.y = app.y.add(t.ray);
+
+                return (uint256(-ts.fox), uint256(ts.foy));
             }
-            
-            return (uint256(-ts.fox), uint256(-ts.foy));
         }
 
         /*
@@ -418,6 +429,12 @@ contract Solo is ISolo,
             ts.coy = ts.cax.mul(spotXForY);
             // Formula 4.30
             ts.oy = SoloMath.min(ts.coy, ts.acy).add(ud(uint256(-ts.foy)));
+
+            // update app.x and app.y after a trade
+            // take full amount in, subtract tokens given out
+            app.x = app.x.add(t.rax);
+            app.y = app.y.sub(ts.oy);
+
             // oy + foy to trader
             ERC20(token1).safeTransfer(msg.sender, UD60x18.unwrap(ts.oy)); // Y is token1
         } else {
@@ -426,6 +443,12 @@ contract Solo is ISolo,
             ts.cox = ts.cay.div(spotYForX);
             // Formula 4.30
             ts.ox = SoloMath.min(ts.cox, ts.acx).add(ud(uint256(-ts.fox)));
+
+            // update app.x and app.y after a trade
+            // take full amount in, subtract tokens given out
+            app.x = app.x.sub(ts.ox);
+            app.y = app.y.add(t.ray);
+
             // ox + fox to trader
             ERC20(token0).safeTransfer(msg.sender, UD60x18.unwrap(ts.ox)); // X is token0
         }
@@ -437,7 +460,7 @@ contract Solo is ISolo,
         SoloMath.TradeState memory ts,
         SoloMath.TradeReq memory t,
         SoloMath.SoloContext memory ctx
-    ) internal returns (SoloMath.TradeState memory) {
+    ) internal view returns (SoloMath.TradeState memory) {
         SoloMath.ScratchPad memory s_;
 
         (ts, s_) = SoloMath.step1(
@@ -484,15 +507,15 @@ contract Solo is ISolo,
         return (ts);
     }
 
-    function depositToken() public view returns (address token) {
+    function depositToken() public override view returns (address token) {
         token = (token0IsDeposit) ? token0 : token1;
     }
 
-    function quoteToken() public view returns (address token) {
+    function quoteToken() public override view returns (address token) {
         token = (token0IsDeposit) ? token1 : token0;
     }
 
-    function currentTick() public view returns (int24 tick) {
+    function currentTick() public override view returns (int24 tick) {
         tick = pool.currentTick();
     }
 
@@ -540,8 +563,7 @@ contract Solo is ISolo,
             ctx.fY = ud(amount1);
             putFlexPosition(ctx);
         } else {
-            // Rebalancing is avoided if the number of blocks since the high volatility trigger is less than block delay.
-            if(bMin.lt(ud(block.number - app.blockNumber))) {
+            if(bMin.lt(ud((block.number - app.blockNumber) * 1e18))) {
                 // c
                 (ctx.fX, ctx.fY) = app.computeFxFy(ctx, fPct);
                 // d) call preTradeAssessment to see if Flex and Concentrated positions should be rebalanced
@@ -605,7 +627,7 @@ contract Solo is ISolo,
         UD60x18 uninitialized;
 
         int24 cTick_ = currentTick();
-        uint256 sqPrice_ = SoloMath.getSqrtRatioAtTickSimple(pool, depositToken(), quoteToken(), cTick_);
+        uint256 sqPrice_ = SoloMath.getSqrtRatioAtTickSimple(depositToken(), quoteToken(), cTick_);
 
 
         context = SoloMath.SoloContext({
