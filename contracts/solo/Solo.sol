@@ -38,10 +38,10 @@ contract Solo is ISolo,
     uint32 private constant FIVE_MINUTES = 5 minutes;
     uint32 private constant FIFTEEN_MINUTES = 15 minutes;
 
-    address public immutable pool;
-    address public immutable token0;
-    address public immutable token1;
-    bool public immutable token0IsDeposit;
+    address public immutable override pool;
+    address public immutable override token0;
+    address public immutable override token1;
+    bool public immutable override token0IsDeposit;
 
     UD60x18 public bMin;
     SD59x18 public tPct;
@@ -644,7 +644,7 @@ contract Solo is ISolo,
      @notice Calculate total value of the pool in quote tokens.
      @return value total value of the pool
      */
-    function capitalAsQuoteTokens(uint256 price) public view returns (uint256 value) {
+    function capitalAsQuoteTokens(uint256 price) public override view returns (uint256 value) {
         uint256 totalDeposit;
         uint256 totalQuote;
         (uint256 amountDeposit, uint256 amountQuote) = flexPosition();
@@ -679,7 +679,7 @@ contract Solo is ISolo,
      @return amount0 Protected token0 tokens.
      @return amount1 Protected token0 tokens.
      */
-    function protectedPosition() public view returns (uint256 amount0, uint256 amount1) {
+    function protectedPosition() public override view returns (uint256 amount0, uint256 amount1) {
         amount0 = app.protected0;
         amount1 = app.protected1;
     }
@@ -689,7 +689,7 @@ contract Solo is ISolo,
      @return amount0 token0 tokens in the dynamicaly allocated concentrated liquidity position. 
      @return amount1 token1 tokens in the dynamicaly allocated concentrated liquidity position. 
      */
-    function concentratedPosition() public view returns (uint256 amount0, uint256 amount1) {
+    function concentratedPosition() public override view returns (uint256 amount0, uint256 amount1) {
         amount0 = ERC20(token0).balanceOf(address(this)) - app.protected0;
         amount1 = ERC20(token1).balanceOf(address(this)) - app.protected1;
     }
@@ -699,8 +699,7 @@ contract Solo is ISolo,
      @return amountDeposit The amount of deposit tokens in the flex position liquidity. 
      @return amountQuote The amount of quote tokens  in the flex position liquidity. 
      */
-    function flexPosition() public view returns 
-    (uint256 amountDeposit, uint256 amountQuote) {
+    function flexPosition() public override view returns (uint256 amountDeposit, uint256 amountQuote) {
         // TODO /1000, *1000 - temporary patch until the math is fixed on lower levels
         int24 tickMin = tMin();
         int24 tickMax = tMax();
@@ -715,11 +714,11 @@ contract Solo is ISolo,
         amountQuote = (token0IsDeposit) ? amount1 * 1000 : amount0 * 1000;
     }
 
-    function tMin() public view returns (int24 tick) {
+    function tMin() public override view returns (int24 tick) {
         tick = int24(SD59x18.unwrap(app.tMin));
     }
 
-    function tMax() public view returns (int24 tick) {
+    function tMax() public override view returns (int24 tick) {
         tick = int24(SD59x18.unwrap(app.tMax));
     }
 
@@ -735,7 +734,8 @@ contract Solo is ISolo,
      @notice General lookup function for debug purposes. 
      @return ctx
      */
-    function lookupContext() public view returns (SoloMath.SoloContext memory ctx,
+    function lookupContext() public view returns (
+        SoloMath.SoloContext memory ctx,
         uint256 spot_,
         int24 cTick_,
         int24 tickMin,
@@ -757,15 +757,8 @@ contract Solo is ISolo,
         sMin = uint160(UD60x18.unwrap(app.sqrtPMin));
         sMax = uint160(UD60x18.unwrap(app.sqrtPMax));
         (liquidity, ,) = _flexPosition(tickMin, tickMax);
-        //(t0, t1,,) = flexPosition();
-        t0 = SoloMath.getSqrtRatioAtTick(currentTick());
-        t1 = SoloMath.getSqrtRatioAtTick(tickMax);
-        /*(t0, t1) = SoloUV3Math.getAmountsForLiquidity(
-            SoloMath.getSqrtRatioAtTick(currentTick()),
-            SoloMath.getSqrtRatioAtTick(tickMin-1000),
-            SoloMath.getSqrtRatioAtTick(tickMax),
-            liquidity / 1000
-        );*/
+        t0 = 0;
+        t1 = 0;
     }
 
     /**
