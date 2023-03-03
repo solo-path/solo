@@ -41,6 +41,6 @@ interface ISolo {
     ) external returns (uint256 amountDeposit, uint256 amountQuote);
 
     function swapExactInput(uint256 amount0, uint256 amount1) external 
-        returns (uint256 output0, uint256 output1);
+        returns (uint256 output0, uint256 output1, uint256 concentrated0, uint256 concentrated1);
 
 }
