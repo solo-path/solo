@@ -304,7 +304,7 @@ contract Solo is ISolo,
         uint256 amount0, 
         uint256 amount1
     ) external override nonReentrant 
-        returns (uint256 output0, uint256 output1) {
+        returns (uint256 output0, uint256 output1, uint256 concentrated0, uint256 concentrated1) {
 
         if (amount0 * amount1 != 0) revert ( "a" );
 
@@ -379,7 +379,7 @@ contract Solo is ISolo,
                 app.x = app.x.add(t.rax);
                 app.y = app.y.sub(ud(uint256(-ts.foy)));
 
-                return (uint256(ts.fox), uint256(-ts.foy));
+                return (uint256(ts.fox), uint256(-ts.foy), 0, 0);
             } else {
                 ERC20(token0).transfer(msg.sender, uint256(-ts.fox));
 
@@ -388,7 +388,7 @@ contract Solo is ISolo,
                 app.x = app.x.sub(ud(uint256(-ts.fox)));
                 app.y = app.y.add(t.ray);
 
-                return (uint256(-ts.fox), uint256(ts.foy));
+                return (uint256(-ts.fox), uint256(ts.foy), 0, 0);
             }
         }
 
@@ -453,7 +453,9 @@ contract Solo is ISolo,
             ERC20(token0).safeTransfer(msg.sender, UD60x18.unwrap(ts.ox)); // X is token0
         }
 
-        return (UD60x18.unwrap(ts.ox), UD60x18.unwrap(ts.oy));
+        return (UD60x18.unwrap(ts.ox), UD60x18.unwrap(ts.oy), 
+                UD60x18.unwrap(SoloMath.min(ts.cox, ts.acx)), 
+                UD60x18.unwrap(SoloMath.min(ts.coy, ts.acy)));
     }
 
     function tokensUsed(
