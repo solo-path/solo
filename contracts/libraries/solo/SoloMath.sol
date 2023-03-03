@@ -31,6 +31,8 @@ library SoloMath {
 
     int256 private constant MIN_TICK = -887272 * 1e18;
 
+    // TODO there must be a way to reduce the number of structure and parameters
+
     struct SoloState {
         UD60x18 x;
         UD60x18 y;
@@ -84,6 +86,7 @@ library SoloMath {
         bool resetsConcentratedPosition;
     }
 
+    // for debug purposes only
     struct TradeStateDebug {
         UD60x18 px;
         UD60x18 py;
@@ -496,10 +499,12 @@ library SoloMath {
         return (ts, s);
     }
 
+    // reset the concentrated position - it'll take time to grow back up
     function resetConcentratedPosition(SoloMath.SoloState storage self) public {
         self.blockNumber = block.number;
     }
 
+    // track the first price in the block
     function updatePf(SoloMath.SoloState storage self, UD60x18 p) public {
         uint256 blockNumber = block.number;
         if (self.blockNumber < blockNumber) {
@@ -518,6 +523,8 @@ library SoloMath {
         sqMax = getPrbSqrtRatioAtTickSimple(depositToken, quoteToken, tickMax_);
     }
 
+    // moved here to reduce the contract size
+    // TODO move it back to Solo.sol when possible
     function firstDeposit(
         SoloState storage self, 
         address pool,

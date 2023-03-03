@@ -38,24 +38,38 @@ contract Solo is ISolo,
     uint32 private constant FIVE_MINUTES = 5 minutes;
     uint32 private constant FIFTEEN_MINUTES = 15 minutes;
 
+    // pool used to hold the Flex position
     address public immutable override pool;
+    // token0 in the pool
     address public immutable override token0;
+    // token1 in the pool
     address public immutable override token1;
+    // used to determine which pool token is deposit token
     bool public immutable override token0IsDeposit;
 
+    // Minimum number of blocks since the last reset
     UD60x18 public bMin;
+    // Trading Range threshold (percentage)
+    // Used to determine how many ticks the price can move within Flex posistion 
+    // before causing expansion of the flex position.
     SD59x18 public tPct;
+    // Speed parameter for the concentration increase after a reset
     UD60x18 public s;
+    // Pool’s Trading Fee
     UD60x18 public fee;
+    // Percentage of deposit tokens to be allocated to the Protected position
     UD60x18 public dPct;
+    // Maximum percent of x and y to be placed into the Flex liquidity position
     UD60x18 public fPct;
+    // Rebalance threshold (percentage)
+    // Used to determine the maximum size at which the Flex position could grow before triggering a rebalance.
     UD60x18 public rPct;
 
     // state of the pool with all positions
     SoloMath.SoloState private app;
 
-    // place to save for debug purposes
-    //SoloMath.SoloContext public ctx_;
+    // Structures used for debugging only
+    // SoloMath.SoloContext public ctx_;
     SoloMath.TradeStateDebug public ts_;
 
     constructor(
@@ -80,6 +94,7 @@ contract Solo is ISolo,
             100
         );
 
+        // find out relationship between token0/token1, tokenA/tokenB and deposit/quote tokens 
         bool tokenAIsToken0 = tokenA_ < tokenB_;
         token0IsDeposit = (tokenAIsToken0 && tokenAIsDeposit_) || (!tokenAIsToken0 && !tokenAIsDeposit_);
 
@@ -104,6 +119,14 @@ contract Solo is ISolo,
         rPct = rPct_;
     }
 
+    /**
+     @notice this must be called after the solo pool is created
+        sets the price, initial range for the flex position and deploys initial funds into the pool 
+     @param amountDeposit initial amount of deposit token
+     @param amountDeposit initial amount of quote token
+     @param ticksRange range of the flex position in ticks (position will be set as cTick-ticksRange/cTick+ticksRange)
+     @param price price of deposit token in quote tokens
+     */
     function firstDeposit(
         uint256 amountDeposit,
         uint256 amountQuote,
@@ -169,7 +192,7 @@ contract Solo is ISolo,
         UD60x18 toProtected = dPct.mul(ud(amountDeposit));
         UD60x18 toMain = ud(amountDeposit).sub(toProtected);
 
-        // if the difference between the spot price and the 15 minute TWAP is more than 5%
+        // TODO if the difference between the spot price and the 15 minute TWAP is more than 5%
 
         /*if(ud(pool.spot(depositToken(), quoteToken(), ONE)).div(
             ud(pool.twap(depositToken(), quoteToken(), FIFTEEN_MINUTES, ONE))).gt(percent5)) {
@@ -217,6 +240,7 @@ contract Solo is ISolo,
         app.updatePf(spotPrice);
     }
 
+    // proportionally reduce all positions (used during withdraw)
     function reducePositions(uint256 lpAmount) internal 
         returns (uint256 amountDeposit, uint256 amountQuote) 
     {
@@ -247,7 +271,7 @@ contract Solo is ISolo,
     }
 
     /**
-     @notice 3.8  Liquidity Removal
+     @notice Liquidity Removal
         A user may redeem their pool tokens for both quote and deposit assets at the current mix in the pool
         without experiencing slippage.  Upon redemption, the number of protected tokens is adjusted in the same 
         proportion as the overall LP tokens.
@@ -256,7 +280,6 @@ contract Solo is ISolo,
      @return amountDeposit Amount of deposit tokens redeemed by the submitted liquidity tokens
      @return amountQuote Amount of quote tokens redeemed by the submitted liquidity tokens
      */
-
     function withdraw(uint256 lpAmount, address to) external override nonReentrant 
         returns (uint256 amountDeposit, uint256 amountQuote) {
         app.updatePf(ud(pool.spot(depositToken(), quoteToken(), ONE)));
@@ -300,6 +323,15 @@ contract Solo is ISolo,
         ERC20(quoteToken()).safeTransfer(to, amountQuote);
     }
 
+    /**
+     @notice swap one token for another
+     @param amount0 amount of token0 to swap (if zero, means the other token is being swapped)
+     @param amount1 amount of token1 to swap (if zero, means the other token is being swapped)
+     @return output0 amount of aquired token0
+     @return output1 amount of aquired token1
+     @return concentrated0 amount of aquired token0 from the concentrated position
+     @return concentrated1 amount of aquired token1 from the concentrated position
+     */
     function swapExactInput(
         uint256 amount0, 
         uint256 amount1
@@ -334,9 +366,7 @@ contract Solo is ISolo,
         
         // if(amount0 == 0 && amount1 == 0) revert("not possible?")
 
-        // The following steps are coordinated in tokensUsed() below.
-
-        /*
+        /* The following steps are coordinated in tokensUsed() below.
         Step 1
         Calculate the Ax or Ay, the specific quantity of either X or Y tokens used in the swap, by subtracting the fee.
         Step 3
@@ -348,7 +378,6 @@ contract Solo is ISolo,
         Determine amounts of tokens to be traded against the Flex position (FAx and FAy) and against the 
         Concentrated position (CAx and CAy).
         */
-
         ts = tokensUsed(
             ts,
             t,
@@ -397,10 +426,6 @@ contract Solo is ISolo,
         */
        
         // One of these will be positive and exact - amount tokens received.
-
-        // review: Likely directional confusion here. 
-        // review: Consider exact amount in and no concern about slippage.
-
         // note that the token purchased comes out as negative number
         (ts.fox, ts.foy) = IUniswapV3Pool(pool).swap(
             address(this),
@@ -421,8 +446,6 @@ contract Solo is ISolo,
         ts.concentratedSwapPrice = ((pool.spot(depositToken(), quoteToken(), ONE)))._uint160Safe();
 
         // Step 7
-        // Formula 4.30
-
         if (ts.xForY) {
             UD60x18 spotXForY = ud(ts.concentratedSwapPrice);
             // Formula 4.29
@@ -458,6 +481,7 @@ contract Solo is ISolo,
                 UD60x18.unwrap(SoloMath.min(ts.coy, ts.acy)));
     }
 
+    // math for trade simulation goes here
     function tokensUsed(
         SoloMath.TradeState memory ts,
         SoloMath.TradeReq memory t,
@@ -521,6 +545,7 @@ contract Solo is ISolo,
         tick = pool.currentTick();
     }
 
+    // rebalances and resets the flex position if needed
     function conditionalRebalance(
         SoloMath.SoloContext memory ctx,
         SoloMath.TradeState memory ts
@@ -625,6 +650,7 @@ contract Solo is ISolo,
     }
 
     function getContext() public view returns (SoloMath.SoloContext memory context) {
+        // TODO probably possible to drop this structure completely, or merge other things into it
         
         UD60x18 uninitialized;
 
