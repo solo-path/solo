@@ -446,10 +446,10 @@ contract Solo is ISolo,
         ts.concentratedSwapPrice = ((pool.spot(depositToken(), quoteToken(), ONE)))._uint160Safe();
 
         // Step 7
+        UD60x18 spotPrice = ud(ts.concentratedSwapPrice);
         if (ts.xForY) {
-            UD60x18 spotXForY = ud(ts.concentratedSwapPrice);
             // Formula 4.29
-            ts.coy = ts.cax.mul(spotXForY);
+            ts.coy = ts.cax.mul(spotPrice);
             // Formula 4.30
             ts.oy = SoloMath.min(ts.coy, ts.acy).add(ud(uint256(-ts.foy)));
 
@@ -461,9 +461,8 @@ contract Solo is ISolo,
             // oy + foy to trader
             ERC20(token1).safeTransfer(msg.sender, UD60x18.unwrap(ts.oy)); // Y is token1
         } else {
-            UD60x18 spotYForX = SoloMath.one().div(ud(ts.concentratedSwapPrice));
             // Formula 4.29
-            ts.cox = ts.cay.div(spotYForX);
+            ts.cox = ts.cay.div(spotPrice);
             // Formula 4.30
             ts.ox = SoloMath.min(ts.cox, ts.acx).add(ud(uint256(-ts.fox)));
 
