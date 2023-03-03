@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const soloFactory = await deploy('SoloFactory', {
     from: deployer,
-    args: ['0x1Efb4242106d1532143245AfD050d9e8C70473f5'],  //solo instance of univ3Factory we deployed
+    args: ['0xA9081Ec57907e8dC69247Bb38E3e879a0C141abC'],  //solo instance of univ3Factory we deployed
     libraries: { SoloMath: soloMathLib.address, SoloUV3Math: soloUV3MathLib.address},
     log: true
   });
