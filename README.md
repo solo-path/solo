@@ -16,4 +16,9 @@ Each Solo pool manages three positions: Flex, Concentrated, and Protected. These
 
 The allocation of tokens between these positions is reassessed after deposits and before trades.  In all cases, rebalancing is avoided if the number of blocks since the high volatility trigger is less than block delay (B < Bmin) in order to protect LPs from adversaries that may attempt to manipulate the price and then benefit from increased concentration at the manipulated price.
 
-For more details, read this SOLO Product Requirements + Math doc: https://docs.google.com/document/d/16Icw6yTT65-Q8X_OE53U2biJjpkqx0PADVESHXaGXgY/edit#
+For more details, check out the following resources:
+
+DEMO App: https://solo-trade.netlify.app/
+Brochure: https://drive.google.com/file/d/1HL9gDHm6MRdXPPmXFvPq7bwzHmSebBUS/view?usp=share_link
+Product Requirements + Math doc: https://docs.google.com/document/d/16Icw6yTT65-Q8X_OE53U2biJjpkqx0PADVESHXaGXgY/edit#
+
