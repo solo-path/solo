@@ -408,7 +408,7 @@ contract Solo is ISolo,
                 app.x = app.x.add(t.rax);
                 app.y = app.y.sub(ud(uint256(-ts.foy)));
 
-                return (uint256(ts.fox), uint256(-ts.foy), 0, 0);
+                return (0, uint256(-ts.foy), 0, 0);
             } else {
                 ERC20(token0).transfer(msg.sender, uint256(-ts.fox));
 
@@ -417,7 +417,7 @@ contract Solo is ISolo,
                 app.x = app.x.sub(ud(uint256(-ts.fox)));
                 app.y = app.y.add(t.ray);
 
-                return (uint256(-ts.fox), uint256(ts.foy), 0, 0);
+                return (uint256(-ts.fox), 0, 0, 0);
             }
         }
 
