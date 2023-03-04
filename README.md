@@ -18,7 +18,9 @@ The allocation of tokens between these positions is reassessed after deposits an
 
 For more details, check out the following resources:
 
-DEMO App: https://solo-trade.netlify.app/
-Brochure: https://drive.google.com/file/d/1HL9gDHm6MRdXPPmXFvPq7bwzHmSebBUS/view?usp=share_link
-Product Requirements + Math doc: https://docs.google.com/document/d/16Icw6yTT65-Q8X_OE53U2biJjpkqx0PADVESHXaGXgY/edit#
+- DEMO App: https://solo-trade.netlify.app/
+
+- Brochure: https://drive.google.com/file/d/1HL9gDHm6MRdXPPmXFvPq7bwzHmSebBUS/view?usp=share_link
+
+- Product Requirements + Math doc: https://docs.google.com/document/d/16Icw6yTT65-Q8X_OE53U2biJjpkqx0PADVESHXaGXgY/edit#
 
