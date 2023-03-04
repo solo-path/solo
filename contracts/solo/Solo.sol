@@ -185,7 +185,10 @@ contract Solo is ISolo,
         // TODO add check for totalSupply > 0. This should never be the case, because firstDeposit must come in first
 
         UD60x18 spotPrice = ud(pool.spot(depositToken(), quoteToken(), ONE));
-        UD60x18 twapPrice = ud(pool.twap(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
+        
+        // Note: Not using TWAP in the prototype. To be enabled in the future.
+        // UD60x18 twapPrice = ud(pool.twap_(depositToken(), quoteToken(), FIVE_MINUTES, ONE));
+        UD60x18 twapPrice = spotPrice;
         UD60x18 offeredPrice = SoloMath.min(spotPrice, twapPrice);
 
         //UD60x18 percent5 = ud(FIVE).div(ud(HUNDRED));
@@ -211,7 +214,7 @@ contract Solo is ISolo,
             valueOfDeposit.div(
                 ud(capitalAsQuoteTokens(UD60x18.unwrap(SoloMath.max(spotPrice, twapPrice))))
             );
- 
+
         // change app.protected after getting the tvl calculated
         if (token0IsDeposit) {
             app.protected0 = app.protected0 + UD60x18.unwrap(toProtected);
