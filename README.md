@@ -24,7 +24,7 @@ For more details, check out the following resources:
 
 - Product Requirements + Math doc: https://docs.google.com/document/d/16Icw6yTT65-Q8X_OE53U2biJjpkqx0PADVESHXaGXgY/edit#
 
-# ETHDenver POC Details
+# 6. ETHDenver POC Details
 
 ## Live demo UI
 
@@ -71,3 +71,25 @@ v3StakerAddress - https://mumbai.polygonscan.com/address/0x8b0C8c8C9af2fAE24F3ca
 quoterV2Address - https://mumbai.polygonscan.com/address/0x56f6860B18F9496f040420ba36dF8acE84E5458E
 
 swapRouter02 - https://mumbai.polygonscan.com/address/0xE8dFB1b10ae5FC25B6726862167b24d8c5EFdB28
+
+# 7. Why did we choose Polygon?
+
+Polygon is a Layer 2 scaling solution for Ethereum, which is a blockchain that allows developers to build decentralized applications (dApps) and smart contracts. Polygon offers a high-performance, low-cost, and secure infrastructure that enables developers to deploy their applications and services quickly and easily. One of the most significant advantages of Polygon is its ability to support various decentralized finance (DeFi) applications, including Automated Market Makers (AMMs).
+
+Automated Market Makers (AMMs) are a type of decentralized exchange (DEX) that uses smart contracts to automatically set prices for assets. AMMs have become increasingly popular in the DeFi space due to their ability to provide liquidity and trade pairs without the need for centralized intermediaries. Polygon is an excellent place to deploy a novel AMM for several reasons, including:
+
+High Performance and Low Transaction Fees:
+
+Polygon is designed to offer high performance and low transaction fees, making it an ideal platform for AMMs. Compared to the Ethereum network, Polygon's transaction fees are significantly lower, which means that developers can deploy their AMMs without worrying about high gas fees. Additionally, Polygon's network can handle a much higher volume of transactions per second, which allows AMMs to execute trades quickly and efficiently.
+
+Interoperability and Support for Smart Contracts:
+
+Polygon is highly interoperable with Ethereum, which means we were able to easily deploy our Ethereum-based AMM on Polygon. Polygon supports a range of programming languages, including Solidity, which allowed us to code Solo AMM using our preferred language.
+
+Large and Growing User Base:
+
+Polygon has a large and growing user base, with many users seeking to use DeFi applications on its network due to its high-performance capabilities and low transaction fees. Deploying a novel AMM on Polygon will enable us to tap into this growing user base and attract more users to their platform. Additionally, Polygon has a thriving community of developers and enthusiasts, which can provide support and feedback to developers as they deploy their AMMs.
+
+Conclusion:
+
+Polygon is a great place to deploy a novel AMM due to its high-performance capabilities, low transaction fees, interoperability, large and growing user base, and support for smart contracts. By deploying Solo AMM on Polygon, we will be able to reach a broader range of users and tap into a thriving DeFi ecosystem.
